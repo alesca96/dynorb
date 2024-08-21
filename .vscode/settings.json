@@ -1,0 +1,18 @@
+{
+    "cmake.configureOnOpen": false,
+    "files.associations": {
+        "iostream": "cpp",
+        "cmath": "cpp",
+        "vector": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp",
+        "utility": "cpp",
+        "compare": "cpp",
+        "functional": "cpp",
+        "memory": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "xmemory": "cpp",
+        "xtr1common": "cpp"
+    }
+}
