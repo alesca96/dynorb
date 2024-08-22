@@ -16,7 +16,7 @@
             "compilerPath": "C:/cygwin64/bin/gcc.exe",
             "cStandard": "c11",
             "cppStandard": "gnu++20",
-            "intelliSenseMode": "windows-gcc-x64"
+            "intelliSenseMode": "linux-gcc-x64"
         }
     ],
     "version": 4

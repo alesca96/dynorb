@@ -17,9 +17,10 @@ if exist .\bin\debug\debug_out.exe (
 g++ ^
     -g ^
     -O0 ^
+    -Wall ^
     -I "C:\cygwin64\usr\include" ^
     -L "C:\cygwin64\usr\lib" ^
-    .\source\test1.cpp ^
+    .\source\test.cpp ^
     -o .\bin\debug\debug_out.exe ^
     -lgsl -lgslcblas
 
