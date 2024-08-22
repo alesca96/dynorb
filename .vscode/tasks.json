@@ -2,29 +2,30 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "debug",
+            "label": "Build with Optimization",
             "type": "shell",
-            "command": "${workspaceFolder}/debug.bat",
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "new"
+            "command": "${workspaceFolder}\\build.bat",
+            "group": {
+                "kind": "build",
+                "isDefault": true
             },
-            "problemMatcher": []
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Compiles the project with optimization settings."
         },
         {
-            "label": "Build and Run",
+            "label": "Build for Debug",
             "type": "shell",
-            "command": "${workspaceFolder}/build.bat",
+            "command": "${workspaceFolder}\\debug.bat",
             "group": {
                 "kind": "build",
                 "isDefault": false
             },
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared"
-            },
-            "problemMatcher": []
-        },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Compiles the project for debugging."
+        }
     ]
 }

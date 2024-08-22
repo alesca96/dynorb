@@ -9,7 +9,7 @@ int func(double x, const double y[], double f[], void *params)
     return GSL_SUCCESS;
 }
 
-int main()
+int main(void)
 {
     printf("===============================\n");
     printf("Program Start\n");

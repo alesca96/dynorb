@@ -3,7 +3,10 @@
 ::======================================================
 @echo off
 
-@echo on
+:: Create the target directory if it doesn't exist
+if not exist .\bin\release (
+    mkdir .\bin\release
+)
 
 if exist .\bin\release\out.exe (
     del .\bin\release\out.exe

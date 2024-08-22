@@ -1,16 +1,34 @@
 ::===========================================================
-::Builds the debug_out.exe to debug using Visual Studio Code
+:: Builds the debug_out.exe to debug using Visual Studio Code
 ::===========================================================
 @echo off
-if exist .\bin\debug\debug_out.exe (
-    del .\bin\debug\debug_out.exe )
 
-:: Compile the source files
+:: Create the target directory if it doesn't exist
+if not exist .\bin\debug (
+    mkdir .\bin\debug
+)
+
+:: Delete the old executable if it exists
+if exist .\bin\debug\debug_out.exe (
+    del .\bin\debug\debug_out.exe
+)
+
+:: Compile the source files with debug symbols
 g++ ^
--g ^
--I /cygwin64/usr/include ^
--L /cygwin64/usr/lib ^
-.\source\test1.cpp ^
--o .\bin\debug\debug_out.exe ^
--lgsl -lgslcblas
+    -g ^
+    -O0 ^
+    -I "C:\cygwin64\usr\include" ^
+    -L "C:\cygwin64\usr\lib" ^
+    .\source\test1.cpp ^
+    -o .\bin\debug\debug_out.exe ^
+    -lgsl -lgslcblas
+
+:: Check for successful compilation
+if %errorlevel% neq 0 (
+    echo "Build failed!"
+    exit /b %errorlevel%
+) else (
+    echo "Build succeeded!"
+)
+
 

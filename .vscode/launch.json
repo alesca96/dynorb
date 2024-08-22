@@ -2,16 +2,78 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Program",
-            "type": "cppvsdbg",
+            "name": "Debug Build",
+            "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/debug/debug_out.exe",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "environment": [],
-            "console": "integratedTerminal",
-            "preLaunchTask": "debug"
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build for Debug",
+            "miDebuggerPath": "C:/cygwin64/bin/gdb.exe",
+            "miDebuggerArgs": "",
+            "logging": {
+                "engineLogging": true,
+                "trace": true,
+                "traceResponse": true
+            },
+            "internalConsoleOptions": "openOnSessionStart",
+            "sourceFileMap": {
+                "/cygdrive/c": "C:",
+                "/cygwin64/home": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Optimized Build",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/release/out.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build with Optimization",
+            "miDebuggerPath": "C:/cygwin64/bin/gdb.exe",
+            "miDebuggerArgs": "",
+            "logging": {
+                "engineLogging": true,
+                "trace": true,
+                "traceResponse": true
+            },
+            "internalConsoleOptions": "openOnSessionStart",
+            "sourceFileMap": {
+                "/cygdrive/c": "C:",
+                "/cygwin64/home": "${workspaceFolder}"
+            }
         }
     ]
 }
