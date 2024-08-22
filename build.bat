@@ -17,7 +17,7 @@ g++ ^
 -O2 ^
 -I /cygwin64/usr/include ^
 -L /cygwin64/usr/lib ^
-.\source\*.cpp ^
+.\source\test.cpp ^
 -o .\bin\release\out.exe ^
 -lgsl -lgslcblas
 
