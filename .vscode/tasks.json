@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build with Optimization",
+            "label": "Build",
             "type": "shell",
             "command": "${workspaceFolder}\\build.bat",
             "group": {
@@ -15,7 +15,7 @@
             "detail": "Compiles the project with optimization settings."
         },
         {
-            "label": "Build for Debug",
+            "label": "Debug",
             "type": "shell",
             "command": "${workspaceFolder}\\debug.bat",
             "group": {

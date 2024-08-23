@@ -13,14 +13,17 @@ if exist .\bin\debug\debug_out.exe (
     del .\bin\debug\debug_out.exe
 )
 
+:: Filename: 
+set filename=test
+
 :: Compile the source files with debug symbols
-g++ ^
+gcc ^
     -g ^
     -O0 ^
     -Wall ^
     -I "C:\cygwin64\usr\include" ^
     -L "C:\cygwin64\usr\lib" ^
-    .\source\test.cpp ^
+    .\source\%filename%.c ^
     -o .\bin\debug\debug_out.exe ^
     -lgsl -lgslcblas
 
@@ -31,5 +34,9 @@ if %errorlevel% neq 0 (
 ) else (
     echo "Build succeeded!"
 )
+
+@REM echo "Starting debugger..."
+@REM gdb ^
+@REM .\bin\debug\debug_out.exe
 
 

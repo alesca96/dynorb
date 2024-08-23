@@ -7,5 +7,5 @@ int main(int argc, char **argv)
     double y = 7.9;
     double x = 5.1;
     printf("Hello World\n");
-    printf("Varaible x=%f\n, y=%f\n", x, y);
+    printf("Varaible x=%f, y=%f\n", x, y);
 }

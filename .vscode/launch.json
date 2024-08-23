@@ -24,9 +24,9 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "Build for Debug",
+            "preLaunchTask": "Debug",
             "miDebuggerPath": "C:/cygwin64/bin/gdb.exe",
-            "miDebuggerArgs": "",
+            // "miDebuggerArgs": "",
             "logging": {
                 "engineLogging": true,
                 "trace": true,
@@ -34,8 +34,12 @@
             },
             "internalConsoleOptions": "openOnSessionStart",
             "sourceFileMap": {
+                "<source-path>": {
+                    "editorPath": "${workspaceFolder}/source",
+                    "useForBreakpoints": true
+                },
                 "/cygdrive/c": "C:",
-                "/cygwin64/home": "${workspaceFolder}"
+                "/cygwin64/home": "${workspaceFolder}/source"
             }
         },
         {
@@ -61,9 +65,9 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "Build with Optimization",
+            "preLaunchTask": "Build",
             "miDebuggerPath": "C:/cygwin64/bin/gdb.exe",
-            "miDebuggerArgs": "",
+            // "miDebuggerArgs": "",
             "logging": {
                 "engineLogging": true,
                 "trace": true,
@@ -71,6 +75,10 @@
             },
             "internalConsoleOptions": "openOnSessionStart",
             "sourceFileMap": {
+                "<source-path>": {
+                    "editorPath": "${workspaceFolder}/source",
+                    "useForBreakpoints": true
+                },
                 "/cygdrive/c": "C:",
                 "/cygwin64/home": "${workspaceFolder}"
             }

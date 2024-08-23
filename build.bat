@@ -13,11 +13,11 @@ if exist .\bin\release\out.exe (
 )
 
 
-g++ ^
+gcc ^
 -O2 ^
 -I /cygwin64/usr/include ^
 -L /cygwin64/usr/lib ^
-.\source\test.cpp ^
+.\source\test.c ^
 -o .\bin\release\out.exe ^
 -lgsl -lgslcblas
 
