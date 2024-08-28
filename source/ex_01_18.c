@@ -18,7 +18,7 @@ typedef struct
 
 int SimpHarmOsc(double t, const double yy[], double ff[], void *params)
 {
-    // Parameters;
+    // Parameters:
     SimpHarmOscParams *p = (SimpHarmOscParams *)params;
     double F0 = p->F0;
     double m = p->m;
@@ -29,6 +29,37 @@ int SimpHarmOsc(double t, const double yy[], double ff[], void *params)
     // Simple Harmonic Oscillator: ff = df/dt
     ff[0] = yy[1];
     ff[1] = (F0 / m) * sin(om * t) - 2 * zeta * om_n * yy[1] - (om_n * om_n) * yy[0];
+
+    return GSL_SUCCESS;
+}
+
+int SimpHarmOscAnalyticalSolution(double t, const double yy0[], double *x_analytical, void *params)
+{
+
+    // Initial Conditions:
+    double x0 = yy0[0];
+    double x_dot0 = yy0[1];
+    // Parameters:
+    SimpHarmOscParams *p = (SimpHarmOscParams *)params;
+    double F0 = p->F0;
+    double m = p->m;
+    double om_n = p->om_n;
+    double zeta = p->zeta;
+    double om = p->om;
+    // Intermediate Variables:
+    double zeta2 = zeta * zeta;
+    double om2 = om * om;
+    double om_n2 = om_n * om_n;
+    double omom_n = om * om_n;
+    double om_d = om_n * sqrt(1 - zeta2);
+    double _2omom_nzeta = (2 * omom_n * zeta);
+    double F0m = (F0 / m);
+    // Coefficients:
+    double den = ((om_n2 - om2) * (om_n2 - om2)) + (_2omom_nzeta * _2omom_nzeta);
+    double A = (zeta * (om_n / om_d) * x0) + (x_dot0 / om_d) + (((om2 + ((2 * zeta2 - 1) * om_n2)) / (den)) * (om / om_d) * F0m);
+    double B = (x0) + ((_2omom_nzeta / den) * F0m);
+    // Position x(t):
+    *x_analytical = (exp(-zeta * om_n * t) * (A * sin(om_d * t) + B * cos(om_d * t))) + ((F0m / den) * (((om_n2 - om2) * sin(om * t)) - (_2omom_nzeta * cos(om * t))));
 
     return GSL_SUCCESS;
 }
@@ -76,6 +107,7 @@ int main(void)
     // Step 5: Perform Integration:
     while (t < t1)
     {
+
         double next_t = t + h; // Calculate the next time step
         if (next_t > t1)
         {
@@ -91,8 +123,18 @@ int main(void)
             printf("Error: %s\n", gsl_strerror(status));
             break;
         }
-        // printf("t = %.5f, y1 = %.5f, y2 = %.5f\n", t, yy[0], yy[1]); // Print results
-        fprintf(outfile, "%f %f %f\n", t, yy[0], yy[1]);
+
+        // Analytical Solution
+        double x_a = 0.0;
+        double yy0[2] = {x0, x_dot0};
+        int status_analytical = SimpHarmOscAnalyticalSolution(t, yy0, &x_a, &p);
+        if (status_analytical != GSL_SUCCESS)
+        {
+            printf("Error: %s\n", gsl_strerror(status));
+            break;
+        }
+
+        fprintf(outfile, "%f %f %f %f\n", t, yy[0], yy[1], x_a);
     }
 
     // Step 6: Free Memory and Close Data File:
@@ -107,9 +149,13 @@ int main(void)
         "set terminal qt\n"
         "set title 'Example 18 Chapter 01: Simple Harmonic Oscillator using GSL'\n"
         "set xlabel 'Time t [s]'\n"
-        "set ylabel 'x(t) [m], v(t) [m/s]'\n"
+        "set ylabel 'x(t) [m], v(t) [m/s], x_a(t) [m]'\n"
         "plot './data/ex_01_18.txt' using 1:2 with lines title 'x(t)', "
-        "'./data/ex_01_18.txt' using 1:3 with lines title 'v(t)'\n";
+        "'./data/ex_01_18.txt' using 1:3 with lines title 'v(t)', "
+        "'./data/ex_01_18.txt' using 1:4 with points pt 7 ps 1 lc rgb 'black' title 'x_a(t)'\n";
+
+    // "plot './data/ex_01_18.txt' using 1:2 with points pt 1 ps 3 lc rgb 'red' title 'x(t)', "
+    // "'./data/ex_01_18.txt' using 1:4 with points pt 2 ps 3 lc rgb 'blue' title 'x_a(t)'\n";
 
     FILE *gnuplot = popen("gnuplot -persistent", "w");
     if (gnuplot)
