@@ -13,6 +13,8 @@
         "cmath": "c",
         "type_traits": "c",
         "typeinfo": "c",
-        "limits": "cpp"
+        "limits": "cpp",
+        "stdlib.h": "c",
+        "gnc101lib.h": "c"
     }
 }

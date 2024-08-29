@@ -19,11 +19,12 @@ if exist .\bin\release\out.exe (
 :: Compile the source file to create out.exe
 gcc ^
 -O2 ^
+-I .\include ^
 -I /cygwin64/usr/include ^
 -L /cygwin64/usr/lib ^
 .\source\%sourcefile% ^
 -o .\bin\release\out.exe ^
--lgsl -lgslcblas
+-lgsl -lgslcblas -lm
 
 :: Execute the program
 echo Executing the program: .\bin\release\out.exe

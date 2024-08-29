@@ -21,6 +21,7 @@ gcc ^
     -g ^
     -O0 ^
     -Wall ^
+    -I ".\include" ^
     -I "C:\cygwin64\usr\include" ^
     -L "C:\cygwin64\usr\lib" ^
     .\source\%sourcefile% ^
@@ -35,6 +36,9 @@ if %errorlevel% neq 0 (
     echo Build succeeded!
 )
 
-@REM echo "Starting debugger..."
-@REM gdb ^
-@REM .\bin\debug\debug_out.exe
+echo "Starting debugger..."
+gdb ^
+.\bin\debug\debug_out.exe
+
+
+@REM Breakpoint 1 at 0x100401d70: file .\source\ex_01_18b.c, line 92
