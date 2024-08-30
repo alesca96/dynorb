@@ -11,47 +11,66 @@
 #define GNC101LIB_C_
 
 /* Includes: */
+#include <cblas.h>
+#include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h> // For memcpy
-#include <stdio.h>
-#include <cblas.h>
 
-/* Structures: */
+/* Generic ODE Function: */
+typedef void (*odeFun)(const double in_t, double *in_yy, void *in_params, double *out_dyydt);
 
-/* Generic ODE system: */
-typedef void (*odeSysFun)(const double in_t, const double in_yy[], void *in_params, double out_dyydt[]);
+/* ODE System Structure: */
+typedef struct
+{
+    odeFun odeFunction; // Pointer to the ODE function
+    void *params;       // Pointer to the parameters for the ODE function
+    double *yy0;        // Pointer to the initial state array
+    const double t0;    // Initial time
+    const double t1;    // Final time
+    const int sys_size; // Size of the system (number of equations)
 
-void gnc_rk1to4(odeSysFun in_sys, const double in_t0, const double in_t1, double in_h, const int in_rk_order, const double in_yy0[], int sys_size, double out_tt[], double out_yyt[]);
+} odeSys;
 
-/* ****************************************************
-* void gnc_rk1to4(odeSysFun in_sys, const double in_t0, const double in_t1,
-                 double in_h, const int in_rk_order, const double in_yy0[],
-                 double out_tt[], double out_yyt[])
-
+/* **************************************************** */
+void gnc_rk1to4(odeSys *in_sys, const int in_rk_order, const double in_h, double *out_tt, double *out_yyt);
+/*
  * Function for performing Runge-Kutta numerical integration
  * for ODE systems of various orders (RK1 to RK4).
  *
  * The input parameters:
- * - in_sys: Pointer to the function defining the ODE system.
- * - in_t0: Initial time.
- * - in_t1: Final time.
- * - in_h: Time step size.
+ * - in_sys: Pointer to the structure defining the ODE system.
  * - in_rk_order: Order of the Runge-Kutta method (1, 2, 3, or 4).
- * - in_yy0: Initial state vector at time in_t0.
- * - out_tt: Output array to store time points.
- * - out_yyt: Output array to store the state vectors at each time point.
+ * - in_h: Time step size.
+ * - out_tt: Output Pointer to array to store time points.
+ * - out_yyt: Output Pointer to array to store the state vectors at each time point.
  *
  * This function uses a column-major convention.
  * **************************************************** */
 
 #endif // GNC101LIB_C_
 
+/*
+ * **************************************************** *
+ * ************* FUNCTIONS IMPLEMENTATION ************* *
+ * **************************************************** *
+ */
+
 #ifdef GNCLIB_IMPLEMENTATION
 
-void gnc_rk1to4(odeSysFun in_sys, const double in_t0, const double in_t1, double in_h, const int in_rk_order, const double in_yy0[], int sys_size, double out_tt[], double out_yyt[])
+void gnc_rk1to4(odeSys *in_sys, const int in_rk_order, const double in_h, double *out_tt, double *out_yyt)
 {
-    int n_stages = 0; // Declare n_stages outside of switch
-    double *a = NULL; // Declare pointers for a, b, c
+    // Open up structure [TODO: remove this]
+    odeFun odeFunction = in_sys->odeFunction; // Direct assignment
+    void *params = in_sys->params;            // Accessing the pointer to params
+    int sys_size = in_sys->sys_size;          // Immutable, so no need to cast
+    const double *yy0 = in_sys->yy0;          // Direct assignment; no need for casting
+    double t0 = in_sys->t0;                   // Immutable; direct assignment
+    double t1 = in_sys->t1;                   // Immutable; direct assignment
+
+    // Declare n_stages and pointers for a, b, c
+    int n_stages = 0;
+    double *a = NULL;
     double *b = NULL;
     double *c = NULL;
 
@@ -136,13 +155,13 @@ void gnc_rk1to4(odeSysFun in_sys, const double in_t0, const double in_t1, double
     // Allocate Memory for Current State and Copy Initial One:
     double *yy = (double *)malloc(sys_size * sizeof(double));
     double *yy_inner = (double *)malloc(sys_size * sizeof(double));
-    memcpy(yy, in_yy0, sys_size * sizeof(double));
+    memcpy(yy, yy0, sys_size * sizeof(double));
 
     // Allocate Memory for derivatives:
     double *ff = (double *)malloc(sys_size * n_stages * sizeof(double));
 
     // Integration Time Instant:
-    double t = in_t0;
+    double t = t0;
     int step = 0;
 
     // Store initial state:
@@ -151,7 +170,7 @@ void gnc_rk1to4(odeSysFun in_sys, const double in_t0, const double in_t1, double
     step++;
 
     // Numerical Integration:
-    while (t < in_t1)
+    while (t < t1)
     {
         // Evaluate Time Derivatives at 'n_stages' points in [t, t+h]
         for (int i = 0; i < n_stages; ++i)
@@ -165,7 +184,7 @@ void gnc_rk1to4(odeSysFun in_sys, const double in_t0, const double in_t1, double
                     yy_inner[k] += in_h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
                 }
             }
-            in_sys(t_inner, yy_inner, NULL, &ff[i * sys_size]);
+            odeFunction(t_inner, yy_inner, params, &ff[i * sys_size]);
         }
 
         // Update the state:

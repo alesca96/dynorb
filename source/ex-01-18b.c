@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 #define GNCLIB_IMPLEMENTATION
 #include "..\include\gnc101lib.h" // Include your custom RK header file
 
@@ -17,28 +14,33 @@ typedef struct
 
 } SimpHarmOscParams;
 
-void SimpHarmOsc(const double t, const double yy[], void *params, double ff[])
-{
-    // // Parameters:
-    // SimpHarmOscParams *p = (SimpHarmOscParams *)params;
-    // double F0 = p->F0;
-    // double m = p->m;
-    // double om_n = p->om_n;
-    // double zeta = p->zeta;
-    // double om = p->om;
+// (*odeFun)(const double in_t, double *in_yy, void *in_params, double *out_dyydt);
 
+void SimpHarmOsc(const double in_t, const double *in_yy, void *in_params, double *out_ff)
+{
+    // Parameters:
+    SimpHarmOscParams *p = (SimpHarmOscParams *)in_params;
+    double F0 = p->F0;
+    double m = p->m;
+    double om_n = p->om_n;
+    double zeta = p->zeta;
+    double om = p->om;
+
+    /*
     SimpHarmOscParams p = {0};
-    double F0 = 1.0;
-    double m = 1.0;
-    double om_n = 1.0;
-    double om = 0.4 * om_n;
-    double zeta = 0.03;
-    // Simple Harmonic Oscillator: ff = df/dt
-    ff[0] = yy[1];
-    ff[1] = (F0 / m) * sin(om * t) - 2 * zeta * om_n * yy[1] - (om_n * om_n) * yy[0];
+     double F0 = 1.0;
+     double m = 1.0;
+     double om_n = 1.0;
+     double om = 0.4 * om_n;
+     double zeta = 0.03;
+    */
+
+    // Simple Harmonic Oscillator: out_ff = dyy/dt
+    out_ff[0] = in_yy[1];
+    out_ff[1] = (F0 / m) * sin(om * in_t) - 2 * zeta * om_n * in_yy[1] - (om_n * om_n) * in_yy[0];
 }
 
-int SimpHarmOscAnalyticalSolution(double t, const double yy0[], double *x_analytical, void *params)
+int SimpHarmOscAnalyticalSolution(double t, const double *yy0, double *x_analytical, void *params)
 {
 
     // Initial Conditions:
@@ -79,25 +81,34 @@ int main(void)
     p.om = 0.4 * p.om_n;
     p.zeta = 0.03;
 
-    // Step 1: Initial conditions and Integration Range:
+    // Step 1: Initial conditions:
+    const int sys_size = 2;       // System size (2 ODEs)
     double t0 = 0.0;              // Initial time
     double t1 = 110.0;            // Final time
     double x0 = 0.0;              // Initial Position
     double x_dot0 = 0.0;          // Initial Velocity
     double yy0[2] = {x0, x_dot0}; // Initial State
-    double h = 0.5;               // Step size
-    const int sys_size = 2;       // System size (2 ODEs)
-    const int rk_order = 4;       // RK4 method
+
+    // Step 2: Collect Data into odeSys structure:
+    odeSys SimpHarmOscSys = {
+        .odeFunction = (odeFun)SimpHarmOsc,
+        .params = &p,
+        .sys_size = sys_size,
+        .t0 = t0,
+        .t1 = t1,
+        .yy0 = yy0};
+
+    // Step 3: Set up Integration:
+    double h = 1;           // Step size
+    const int rk_order = 4; // RK method
     int num_steps = (int)((t1 - t0) / h) + 1;
+    double *tt = (double *)malloc(num_steps * sizeof(double));             // Allocate memory for time array:
+    double *yyt = (double *)malloc(num_steps * sys_size * sizeof(double)); // Allocate memory for solution array:
 
-    // Allocate memory for time and solution arrays:
-    double *tt = (double *)malloc(num_steps * sizeof(double));
-    double *yyt = (double *)malloc(num_steps * sys_size * sizeof(double));
+    // Step 5: Perform Integration using custom RK method:
+    gnc_rk1to4(&SimpHarmOscSys, rk_order, h, tt, yyt);
 
-    // Step 2: Perform Integration using custom RK method:
-    gnc_rk1to4(SimpHarmOsc, t0, t1, h, rk_order, yy0, sys_size, tt, yyt);
-
-    // Step 3: Open file to store results
+    // Step 5: Open file to store results
     FILE *outfile = fopen("./data/ex_01_18b.txt", "w");
     if (outfile == NULL)
     {
@@ -105,7 +116,7 @@ int main(void)
         return 1;
     }
 
-    // Step 4: Loop over time steps and calculate analytical solution
+    // Step 6: Loop over time steps and calculate analytical solution
     for (int i = 0; i < num_steps; i++)
     {
         double t = tt[i];
@@ -123,7 +134,7 @@ int main(void)
         fprintf(outfile, "%f %f %f %f\n", t, yy[0], yy[1], x_a);
     }
 
-    // Step 5: Free Memory and Close Data File:
+    // Step 7: Free Memory and Close Data File:
     free(tt);
     free(yyt);
     fclose(outfile);
@@ -137,9 +148,9 @@ int main(void)
         "set title 'Example 18 Chapter 01: Simple Harmonic Oscillator using Custom RK4'\n"
         "set xlabel 'Time t [s]'\n"
         "set ylabel 'x(t) [m], v(t) [m/s], x_a(t) [m]'\n"
-        "plot './data/ex_01_18b.txt' using 1:2 with lines title 'x(t)', "
-        "'./data/ex_01_18b.txt' using 1:3 with lines title 'v(t)', "
-        "'./data/ex_01_18b.txt' using 1:4 with points pt 7 ps 1 lc rgb 'black' title 'x_a(t)'\n";
+        "plot './data/ex_01_18b.txt' using 1:2 with points pt 7 ps 1 lc rgb 'red' title 'x(t)', "
+        "'./data/ex_01_18b.txt' using 1:3 with points pt 7 ps 1 lc rgb 'blue' title 'v(t)', "
+        "'./data/ex_01_18b.txt' using 1:4 with lines lc rgb 'black' title 'x_a(t)'\n";
 
     FILE *gnuplot = popen("gnuplot -persistent", "w");
     if (gnuplot)
