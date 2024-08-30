@@ -121,7 +121,6 @@ int main(void)
         // Analytical Solution
         double x_a = 0.0;
         SimpHarmOscAnalyticalSolution(tt[i], yy0, &x_a, &p);
-        // printf("%f %f %f %f\n", t, yyt[i * sys_size], yyt[i * sys_size + 1], x_a);
         fprintf(outfile, "%f %f %f %f\n", tt[i], yyt[i * sys_size], yyt[i * sys_size + 1], x_a);
     }
 
