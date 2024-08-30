@@ -34,7 +34,7 @@ typedef struct
 } _gnc_odeSys;
 
 /* **************************************************** */
-void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, double *out_tt, double *out_yyt);
+void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, const int in_n_steps, double *out_tt, double *out_yyt);
 /*
  * Function for performing Runge-Kutta numerical integration
  * for ODE systems of various orders (RK1 to RK4).
@@ -59,7 +59,7 @@ void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, 
 
 #ifdef GNCLIB_IMPLEMENTATION
 
-void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, double *out_tt, double *out_yyt)
+void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, const int in_n_steps, double *out_tt, double *out_yyt)
 {
     // Open up _gnc_odeSys [TODO: remove this]
     _gnc_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _gnc_odeFun
@@ -164,15 +164,9 @@ void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, 
 
     // Integration Time Instant:
     double t = t0;
-    int step = 0;
-
-    // Store initial state:
-    memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(double));
-    out_tt[step] = t;
-    step++;
 
     // Numerical Integration:
-    while (t < t1)
+    for (int step = 0; step < in_n_steps; ++step)
     {
         // Evaluate Time Derivatives at 'n_stages' points in [t, t+h]
         for (int i = 0; i < n_stages; ++i)
@@ -198,22 +192,19 @@ void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, 
             }
         }
 
-        // Update time and store results:
+        // Update Integration Time:
         t += in_h;
 
-        // Solves the memory issue: sometimes it goes out of bounds
+        // Store results:
         if (t > t1)
         {
-            printf("_gnc_rk1to4: Breaking From Loop <t = %f [s]>\n", t);
             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(double));
             out_tt[step] = t;
-            step++;
+            printf("_gnc_rk1to4 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-
         memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(double));
         out_tt[step] = t;
-        step++;
     }
 
     // Free Memory:

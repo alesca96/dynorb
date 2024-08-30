@@ -93,10 +93,9 @@ int main(void)
         .yy0 = yy0};
 
     // Step 3: Set up Integration:
-    const int rk_order = 4;                          // RK method
-                                                     // Step 3: Set up Integration:
-    double h = 1.0 / (5);                            // Step size
-    int num_steps = (int)(floor((t1 - t0) / h)) + 1; // +1;
+    const int rk_order = 2; // RK method
+    double h = 1.0 / 100.0; // Step size
+    int num_steps = (int)(floor((t1 - t0) / h) + 1);
     printf("Time Step Size: <h = %f [s]>\n", h);
     printf("Number Steps: <num_steps = %d>\n", num_steps);
 
@@ -105,7 +104,7 @@ int main(void)
     double *yyt = (double *)malloc(num_steps * sys_size * sizeof(double)); // Allocate memory for solution array:
 
     // Step 5: Perform Integration using custom RK method:
-    _gnc_rk1to4(&SimpHarmOscSys, rk_order, h, tt, yyt);
+    _gnc_rk1to4(&SimpHarmOscSys, rk_order, h, num_steps, tt, yyt);
 
     // Step 5: Open file to store results
     FILE *outfile = fopen("./data/ex_01_18b.txt", "w");
@@ -128,9 +127,7 @@ int main(void)
     fclose(outfile);
 
     // Step 7: Free Memory and Close Data File:
-    // printf("yyt address before free: %p\n", (double *)yyt);
     free(yyt);
-    // printf("tt address before free: %p\n", (double *)tt);
     free(tt);
 
     /* ==========================================================
