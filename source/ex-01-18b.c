@@ -1,4 +1,8 @@
 #define GNCLIB_IMPLEMENTATION
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>               // For memcpy
 #include "..\include\gnc101lib.h" // Include your custom RK header file
 
 /* Define the system of ODEs: example 1.18 (Chapter 1, pag.45)
@@ -14,8 +18,6 @@ typedef struct
 
 } SimpHarmOscParams;
 
-// (*odeFun)(const double in_t, double *in_yy, void *in_params, double *out_dyydt);
-
 void SimpHarmOsc(const double in_t, const double *in_yy, void *in_params, double *out_ff)
 {
     // Parameters:
@@ -25,15 +27,6 @@ void SimpHarmOsc(const double in_t, const double *in_yy, void *in_params, double
     double om_n = p->om_n;
     double zeta = p->zeta;
     double om = p->om;
-
-    /*
-    SimpHarmOscParams p = {0};
-     double F0 = 1.0;
-     double m = 1.0;
-     double om_n = 1.0;
-     double om = 0.4 * om_n;
-     double zeta = 0.03;
-    */
 
     // Simple Harmonic Oscillator: out_ff = dyy/dt
     out_ff[0] = in_yy[1];
