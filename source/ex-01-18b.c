@@ -83,9 +83,9 @@ int main(void)
     const double x_dot0 = 0.0;          // Initial Velocity
     const double yy0[2] = {x0, x_dot0}; // Initial State
 
-    // Step 2: Collect Data into odeSys structure:
-    odeSys SimpHarmOscSys = {
-        .odeFunction = (const odeFun *)SimpHarmOsc,
+    // Step 2: Collect Data into _gnc_odeSys structure:
+    _gnc_odeSys SimpHarmOscSys = {
+        .odeFunction = (const _gnc_odeFun *)SimpHarmOsc,
         .params = &p,
         .sys_size = sys_size,
         .t0 = t0,
@@ -93,14 +93,19 @@ int main(void)
         .yy0 = yy0};
 
     // Step 3: Set up Integration:
-    double h = 1.0 / 10;    // Step size
-    const int rk_order = 4; // RK method
-    int num_steps = (int)((t1 - t0) / h) + 1;
+    const int rk_order = 4;                          // RK method
+                                                     // Step 3: Set up Integration:
+    double h = 1.0 / (5);                            // Step size
+    int num_steps = (int)(floor((t1 - t0) / h)) + 1; // +1;
+    printf("Time Step Size: <h = %f [s]>\n", h);
+    printf("Number Steps: <num_steps = %d>\n", num_steps);
+
+    // return 0;
     double *tt = (double *)malloc(num_steps * sizeof(double));             // Allocate memory for time array:
     double *yyt = (double *)malloc(num_steps * sys_size * sizeof(double)); // Allocate memory for solution array:
 
     // Step 5: Perform Integration using custom RK method:
-    gnc_rk1to4(&SimpHarmOscSys, rk_order, h, tt, yyt);
+    _gnc_rk1to4(&SimpHarmOscSys, rk_order, h, tt, yyt);
 
     // Step 5: Open file to store results
     FILE *outfile = fopen("./data/ex_01_18b.txt", "w");
@@ -111,7 +116,7 @@ int main(void)
     }
 
     // Step 6: Loop over time steps and calculate analytical solution
-    for (int i = 0; i < num_steps; i++)
+    for (int i = 0; i < num_steps - 1; i++) // -1 beacause last line might be spurious
     {
         // Analytical Solution
         double x_a = 0.0;
@@ -122,12 +127,11 @@ int main(void)
 
     // Closing the file:
     fclose(outfile);
-    printf("File close\n");
 
     // Step 7: Free Memory and Close Data File:
-    printf("yyt address before free: %p\n", (double *)yyt);
-    // free(yyt);
-    printf("tt address before free: %p\n", (double *)tt);
+    // printf("yyt address before free: %p\n", (double *)yyt);
+    free(yyt);
+    // printf("tt address before free: %p\n", (double *)tt);
     free(tt);
 
     /* ==========================================================
