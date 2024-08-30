@@ -94,7 +94,7 @@ int main(void)
 
     // Step 3: Choose a Solver (RK4) and setup stepping function:
     gsl_odeiv2_driver *driver =
-        gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rk2, h, abstol, reltol);
+        gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rk4, h, abstol, reltol);
 
     // Step 4: Open file to store results
     FILE *outfile = fopen("./data/ex_01_18.txt", "w");
@@ -134,7 +134,7 @@ int main(void)
             break;
         }
 
-        fprintf(outfile, "%f %f %f %f\n", t, yy[0], yy[1], x_a);
+        fprintf(outfile, "%.10f %.10f %.10f %.10f\n", t, yy[0], yy[1], x_a);
     }
 
     // Step 6: Free Memory and Close Data File:

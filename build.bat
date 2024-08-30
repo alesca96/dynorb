@@ -4,8 +4,8 @@
 @echo off
 
 :: Prompt the user for the source file name
-::set /p sourcefile=Enter the name of the source file (e.g., test.c): 
-set sourcefile=ex-01-18b.c
+set /p sourcefile=Enter the name of the source file (e.g., test.c): 
+@REM set sourcefile=ex-01-18b.c
 
 :: Create the target directory if it doesn't exist
 if not exist .\bin\release (

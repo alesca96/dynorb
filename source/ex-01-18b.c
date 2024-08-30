@@ -93,8 +93,8 @@ int main(void)
         .yy0 = yy0};
 
     // Step 3: Set up Integration:
-    const int rk_order = 2; // RK method
-    double h = 1.0 / 100.0; // Step size
+    const int rk_order = 4; // RK method
+    double h = 0.5;         // Step size
     int num_steps = (int)(floor((t1 - t0) / h) + 1);
     printf("Time Step Size: <h = %f [s]>\n", h);
     printf("Number Steps: <num_steps = %d>\n", num_steps);
@@ -120,7 +120,7 @@ int main(void)
         // Analytical Solution
         double x_a = 0.0;
         SimpHarmOscAnalyticalSolution(tt[i], yy0, &x_a, &p);
-        fprintf(outfile, "%f %f %f %f\n", tt[i], yyt[i * sys_size], yyt[i * sys_size + 1], x_a);
+        fprintf(outfile, "%.10f %.10f %.10f %.10f\n", tt[i], yyt[i * sys_size], yyt[i * sys_size + 1], x_a);
     }
 
     // Closing the file:
