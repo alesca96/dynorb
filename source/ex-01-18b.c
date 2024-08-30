@@ -91,7 +91,7 @@ int main(void)
 
     // Step 2: Collect Data into odeSys structure:
     odeSys SimpHarmOscSys = {
-        .odeFunction = (odeFun)SimpHarmOsc,
+        .odeFunction = (odeFun *)SimpHarmOsc,
         .params = &p,
         .sys_size = sys_size,
         .t0 = t0,

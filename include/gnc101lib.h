@@ -11,24 +11,24 @@
 #define GNC101LIB_C_
 
 /* Includes: */
-#include <cblas.h>
+// TODO: #include <cblas.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> // For memcpy
 
 /* Generic ODE Function: */
-typedef void (*odeFun)(const double in_t, double *in_yy, void *in_params, double *out_dyydt);
+typedef void(odeFun)(const double in_t, double *in_yy, void *in_params, double *out_dyydt);
 
 /* ODE System Structure: */
 typedef struct
 {
-    odeFun odeFunction; // Pointer to the ODE function
-    void *params;       // Pointer to the parameters for the ODE function
-    double *yy0;        // Pointer to the initial state array
-    const double t0;    // Initial time
-    const double t1;    // Final time
-    const int sys_size; // Size of the system (number of equations)
+    odeFun *odeFunction; // Pointer to the ODE function
+    void *params;        // Pointer to the parameters for the ODE function
+    double *yy0;         // Pointer to the initial state array
+    const double t0;     // Initial time
+    const double t1;     // Final time
+    const int sys_size;  // Size of the system (number of equations)
 
 } odeSys;
 
@@ -60,13 +60,13 @@ void gnc_rk1to4(odeSys *in_sys, const int in_rk_order, const double in_h, double
 
 void gnc_rk1to4(odeSys *in_sys, const int in_rk_order, const double in_h, double *out_tt, double *out_yyt)
 {
-    // Open up structure [TODO: remove this]
-    odeFun odeFunction = in_sys->odeFunction; // Direct assignment
-    void *params = in_sys->params;            // Accessing the pointer to params
-    int sys_size = in_sys->sys_size;          // Immutable, so no need to cast
-    const double *yy0 = in_sys->yy0;          // Direct assignment; no need for casting
-    double t0 = in_sys->t0;                   // Immutable; direct assignment
-    double t1 = in_sys->t1;                   // Immutable; direct assignment
+    // Open up odeSys [TODO: remove this]
+    odeFun *odeFunction = in_sys->odeFunction; // Pointer to odeFun
+    void *params = in_sys->params;             // Pointer to params
+    int sys_size = in_sys->sys_size;           // Size of System
+    const double *yy0 = in_sys->yy0;           // Pointer to Initial Conditions
+    double t0 = in_sys->t0;                    // Initial time
+    double t1 = in_sys->t1;                    // Final time
 
     // Declare n_stages and pointers for a, b, c
     int n_stages = 0;
