@@ -18,17 +18,17 @@
 #include <string.h> // For memcpy
 
 /* Generic ODE Function: */
-typedef void(odeFun)(const double in_t, double *in_yy, void *in_params, double *out_dyydt);
+typedef void(odeFun)(const double in_t, const double *in_yy, const void *in_params, double *out_dyydt);
 
 /* ODE System Structure: */
 typedef struct
 {
-    odeFun *odeFunction; // Pointer to the ODE function
-    void *params;        // Pointer to the parameters for the ODE function
-    double *yy0;         // Pointer to the initial state array
-    const double t0;     // Initial time
-    const double t1;     // Final time
-    const int sys_size;  // Size of the system (number of equations)
+    const odeFun *odeFunction; // Pointer to the ODE function
+    const void *params;        // Pointer to the parameters for the ODE function
+    const double *yy0;         // Pointer to the initial state array
+    const double t0;           // Initial time
+    const double t1;           // Final time
+    const int sys_size;        // Size of the system (number of equations)
 
 } odeSys;
 
@@ -62,8 +62,8 @@ void gnc_rk1to4(odeSys *in_sys, const int in_rk_order, const double in_h, double
 {
     // Open up odeSys [TODO: remove this]
     odeFun *odeFunction = in_sys->odeFunction; // Pointer to odeFun
-    void *params = in_sys->params;             // Pointer to params
-    int sys_size = in_sys->sys_size;           // Size of System
+    const void *params = in_sys->params;       // Pointer to params
+    const int sys_size = in_sys->sys_size;     // Size of System
     const double *yy0 = in_sys->yy0;           // Pointer to Initial Conditions
     double t0 = in_sys->t0;                    // Initial time
     double t1 = in_sys->t1;                    // Final time
@@ -125,6 +125,7 @@ void gnc_rk1to4(odeSys *in_sys, const int in_rk_order, const double in_h, double
         a = (double *)malloc(4 * sizeof(double));     // Note: a is [1 x 4]
         b = (double *)malloc(4 * 3 * sizeof(double)); // Note: b is [4 x 3]
         c = (double *)malloc(4 * sizeof(double));     // Note: c is [4 x 1]
+
         a[0] = 0.0;
         a[1] = 0.5;
         a[2] = 0.5;
@@ -152,13 +153,13 @@ void gnc_rk1to4(odeSys *in_sys, const int in_rk_order, const double in_h, double
         return;
     }
 
-    // Allocate Memory for Current State and Copy Initial One:
+    // Allocate Memory for Current State, Inner State:
     double *yy = (double *)malloc(sys_size * sizeof(double));
     double *yy_inner = (double *)malloc(sys_size * sizeof(double));
-    memcpy(yy, yy0, sys_size * sizeof(double));
+    memcpy(yy, yy0, sys_size * sizeof(double)); // Current state at t0 = initial state
 
-    // Allocate Memory for derivatives:
-    double *ff = (double *)malloc(sys_size * n_stages * sizeof(double));
+    // Allocate Memory for derivatives at each stage:
+    double *ff = (double *)malloc(sys_size * n_stages * sizeof(double)); // (ff = dyy/dt)
 
     // Integration Time Instant:
     double t = t0;
@@ -204,12 +205,15 @@ void gnc_rk1to4(odeSys *in_sys, const int in_rk_order, const double in_h, double
     }
 
     // Free Memory:
-    free(yy_inner);
+    printf("gnc_rk1to4: Begin Freeing Memory:\n");
+    // free(yy_inner);
+    printf("!!!\n");
     free(ff);
     free(yy);
     free(c);
     free(b);
     free(a);
+    printf("gnc_rk1to4: Done Freeing Memory:\n");
 }
 
 #endif // GNCLIB_IMPLEMENTATION

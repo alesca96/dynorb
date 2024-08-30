@@ -18,7 +18,7 @@ typedef struct
 
 } SimpHarmOscParams;
 
-void SimpHarmOsc(const double in_t, const double *in_yy, void *in_params, double *out_ff)
+void SimpHarmOsc(const double in_t, const double *in_yy, const void *in_params, double *out_ff)
 {
     // Parameters:
     SimpHarmOscParams *p = (SimpHarmOscParams *)in_params;
@@ -33,7 +33,7 @@ void SimpHarmOsc(const double in_t, const double *in_yy, void *in_params, double
     out_ff[1] = (F0 / m) * sin(om * in_t) - 2 * zeta * om_n * in_yy[1] - (om_n * om_n) * in_yy[0];
 }
 
-int SimpHarmOscAnalyticalSolution(double t, const double *yy0, double *x_analytical, void *params)
+void SimpHarmOscAnalyticalSolution(double t, const double *yy0, double *x_analytical, const void *params)
 {
 
     // Initial Conditions:
@@ -60,31 +60,32 @@ int SimpHarmOscAnalyticalSolution(double t, const double *yy0, double *x_analyti
     double B = (x0) + ((_2omom_nzeta / den) * F0m);
     // Position x(t):
     *x_analytical = (exp(-zeta * om_n * t) * (A * sin(om_d * t) + B * cos(om_d * t))) + ((F0m / den) * (((om_n2 - om2) * sin(om * t)) - (_2omom_nzeta * cos(om * t))));
-
-    return 0; // Success
 }
 
 int main(void)
 {
     // Step 0: Define Parameters of ODE system:
-    SimpHarmOscParams p = {0};
-    p.F0 = 1.0;
-    p.m = 1.0;
-    p.om_n = 1.0;
-    p.om = 0.4 * p.om_n;
-    p.zeta = 0.03;
+    SimpHarmOscParams p =
+        {
+            .F0 = 1.0,
+            .m = 1.0,
+            .om_n = 1.0,
+            .om = 0.4 * p.om_n,
+            .zeta = 0.03
+
+        };
 
     // Step 1: Initial conditions:
-    const int sys_size = 2;       // System size (2 ODEs)
-    double t0 = 0.0;              // Initial time
-    double t1 = 110.0;            // Final time
-    double x0 = 0.0;              // Initial Position
-    double x_dot0 = 0.0;          // Initial Velocity
-    double yy0[2] = {x0, x_dot0}; // Initial State
+    const int sys_size = 2;             // System size (2 ODEs)
+    const double t0 = 0.0;              // Initial time
+    const double t1 = 110.0;            // Final time
+    const double x0 = 0.0;              // Initial Position
+    const double x_dot0 = 0.0;          // Initial Velocity
+    const double yy0[2] = {x0, x_dot0}; // Initial State
 
     // Step 2: Collect Data into odeSys structure:
     odeSys SimpHarmOscSys = {
-        .odeFunction = (odeFun *)SimpHarmOsc,
+        .odeFunction = (const odeFun *)SimpHarmOsc,
         .params = &p,
         .sys_size = sys_size,
         .t0 = t0,
@@ -92,7 +93,7 @@ int main(void)
         .yy0 = yy0};
 
     // Step 3: Set up Integration:
-    double h = 1;           // Step size
+    double h = 1.0 / 10;    // Step size
     const int rk_order = 4; // RK method
     int num_steps = (int)((t1 - t0) / h) + 1;
     double *tt = (double *)malloc(num_steps * sizeof(double));             // Allocate memory for time array:
@@ -112,25 +113,22 @@ int main(void)
     // Step 6: Loop over time steps and calculate analytical solution
     for (int i = 0; i < num_steps; i++)
     {
-        double t = tt[i];
-        double yy[2] = {yyt[i * sys_size], yyt[i * sys_size + 1]};
-
         // Analytical Solution
         double x_a = 0.0;
-        int status_analytical = SimpHarmOscAnalyticalSolution(t, yy0, &x_a, &p);
-        if (status_analytical != 0)
-        {
-            printf("Error: Analytical solution calculation failed at t = %f\n", t);
-            break;
-        }
-
-        fprintf(outfile, "%f %f %f %f\n", t, yy[0], yy[1], x_a);
+        SimpHarmOscAnalyticalSolution(tt[i], yy0, &x_a, &p);
+        // printf("%f %f %f %f\n", t, yyt[i * sys_size], yyt[i * sys_size + 1], x_a);
+        fprintf(outfile, "%f %f %f %f\n", tt[i], yyt[i * sys_size], yyt[i * sys_size + 1], x_a);
     }
 
-    // Step 7: Free Memory and Close Data File:
-    free(tt);
-    free(yyt);
+    // Closing the file:
     fclose(outfile);
+    printf("File close\n");
+
+    // Step 7: Free Memory and Close Data File:
+    printf("yyt address before free: %p\n", (double *)yyt);
+    // free(yyt);
+    printf("tt address before free: %p\n", (double *)tt);
+    free(tt);
 
     /* ==========================================================
      * GNUPLOT: Use Gnuplot to plot the data
@@ -141,8 +139,8 @@ int main(void)
         "set title 'Example 18 Chapter 01: Simple Harmonic Oscillator using Custom RK4'\n"
         "set xlabel 'Time t [s]'\n"
         "set ylabel 'x(t) [m], v(t) [m/s], x_a(t) [m]'\n"
-        "plot './data/ex_01_18b.txt' using 1:2 with points pt 7 ps 1 lc rgb 'red' title 'x(t)', "
-        "'./data/ex_01_18b.txt' using 1:3 with points pt 7 ps 1 lc rgb 'blue' title 'v(t)', "
+        "plot './data/ex_01_18b.txt' using 1:2 with points pt 7 ps 0.5 lc rgb 'red' title 'x(t)', "
+        "'./data/ex_01_18b.txt' using 1:3 with points pt 7 ps 0.5 lc rgb 'blue' title 'v(t)', "
         "'./data/ex_01_18b.txt' using 1:4 with lines lc rgb 'black' title 'x_a(t)'\n";
 
     FILE *gnuplot = popen("gnuplot -persistent", "w");
