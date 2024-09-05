@@ -17,6 +17,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> // For memcpy
+#include <float.h>
+
+/* Small Functions: */
+double min(double a, double b);
+double max(double a, double b);
 
 /* Generic ODE Function: */
 typedef void(_gnc_odeFun)(const double in_t, const double *in_yy, const void *in_params, double *out_dyydt);
@@ -49,6 +54,22 @@ void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, 
  * This function uses a column-major convention.
  * **************************************************** */
 
+/* **************************************************** */
+void _gnc_heun_(_gnc_odeSys *in_sys, double in_h, const int in_n_steps, double *out_tt, double *out_yyt);
+/*
+ * Function for performing Heun Predictor-Corrector
+    numerical integration for ODE systems.
+ *
+ * The input parameters:
+ * - in_sys: Pointer to the structure defining the ODE system.
+ * - in_rk_order: Order of the Runge-Kutta method (1, 2, 3, or 4).
+ * - in_h: Time step size.
+ * - out_tt: Output Pointer to array to store time points.
+ * - out_yyt: Output Pointer to array to store the state vectors at each time point.
+ *
+ * This function uses a column-major convention.
+ * **************************************************** */
+
 #endif // GNC101LIB_C_
 
 /*
@@ -58,6 +79,17 @@ void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, 
  */
 
 #ifdef GNCLIB_IMPLEMENTATION
+
+/* Small Functions: */
+double min(double a, double b)
+{
+    return (a < b) ? a : b;
+}
+
+double max(double a, double b)
+{
+    return (a > b) ? a : b;
+}
 
 void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, const int in_n_steps, double *out_tt, double *out_yyt)
 {
@@ -218,4 +250,134 @@ void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, 
     // printf("_gnc_rk1to4: Done Freeing Memory:\n");
 }
 
+void _gnc_heun_(_gnc_odeSys *in_sys, double in_h, const int in_n_steps, double *out_tt, double *out_yyt)
+{
+    // Open up _gnc_odeSys
+    _gnc_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _gnc_odeFun
+    const void *params = in_sys->params;            // Pointer to params
+    const int sys_size = in_sys->sys_size;          // Size of System
+    const double *yy0 = in_sys->yy0;                // Pointer to Initial Conditions
+    double t0 = in_sys->t0;                         // Initial time
+    double t1 = in_sys->t1;                         // Final time
+
+    // Tolerance and Max number of steps:
+    const double tol = 1.e-6;
+    const int max_iter = 100;
+
+    // Initialize Algorithm:
+    double t = t0;
+    double *yy = (double *)malloc(sys_size * sizeof(double));
+    if (yy == NULL)
+    {
+        perror("Memory allocation failed for yy");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(yy, yy0, sys_size * sizeof(double));
+
+    // Copy First State and Instant in Output:
+    out_tt[0] = t0;
+    memcpy(out_yyt, yy0, sys_size * sizeof(double));
+
+    // Allocate Memory for state and derivatives at interval boundaries:
+    double *yy1_ = (double *)malloc(sys_size * sizeof(double));
+    double *yy2_ = (double *)malloc(sys_size * sizeof(double));
+    double *ff1_ = (double *)malloc(sys_size * sizeof(double));
+    double *ff2_ = (double *)malloc(sys_size * sizeof(double));
+    double *yy2pred_ = (double *)malloc(sys_size * sizeof(double));
+    double *ffavg_ = (double *)malloc(sys_size * sizeof(double));
+
+    // Main Loop
+    int step = 1;
+    while (t < t1 && step < in_n_steps)
+    {
+        // Step Size:
+        in_h = min(in_h, t1 - t);
+
+        // Left Boundary of Interval:
+        double t1_ = t;
+        memcpy(yy1_, yy, sys_size * sizeof(double));
+        odeFunction(t1_, yy1_, params, ff1_);
+
+        // Compute yy2_
+        for (int i = 0; i < sys_size; ++i)
+        {
+            yy2_[i] = yy1_[i] + ff1_[i] * in_h;
+        }
+
+        // Right Boundary of the Interval:
+        double t2_ = t1_ + in_h;
+        double err = tol + 1;
+        int iter = 0;
+
+        // Predictor-Corrector Loop
+        while (err > tol && iter <= max_iter)
+        {
+            memcpy(yy2pred_, yy2_, sys_size * sizeof(double));
+            odeFunction(t2_, yy2pred_, params, ff2_);
+
+            // Average f value
+            for (int i = 0; i < sys_size; i++)
+            {
+                ffavg_[i] = 0.5 * (ff1_[i] + ff2_[i]);
+            }
+
+            // Corrected value
+            for (int i = 0; i < sys_size; i++)
+            {
+                yy2_[i] = yy1_[i] + (in_h * ffavg_[i]);
+            }
+
+            // Error calculation
+            err = fabs((yy2_[0] - yy2pred_[0]) / (yy2_[0] + DBL_EPSILON));
+            for (int i = 1; i < sys_size; ++i)
+            {
+                double temp_err = fabs((yy2_[i] - yy2pred_[i]) / (yy2_[i] + DBL_EPSILON));
+                if (temp_err > err)
+                {
+                    err = temp_err;
+                }
+            }
+
+            iter++;
+        }
+
+        if (iter > max_iter)
+        {
+            printf("\n Maximum number of iterations: %d\n", max_iter);
+            printf("Exceeded at time: %f\n", t1);
+            printf("In function '_gnc_heun_'\n\n");
+            break;
+        }
+
+        // Update
+        t += in_h;
+        memcpy(yy, yy2_, sys_size * sizeof(double));
+
+        // if (step >= in_n_steps)
+        // {
+        //     out_tt = (double *)realloc(out_tt, (in_n_steps + 1) * sizeof(double));
+        //     out_yyt = (double *)realloc(out_yyt, (in_n_steps + 1) * sys_size * sizeof(double));
+        //     out_tt[step] = t;
+        //     memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(double));
+        //     printf("Number of estimated steps (in_n_steps = %d) surpassed. Using 'realloc'.\n", in_n_steps);
+        // }
+        // else
+        // {
+        //     out_tt[step] = t;
+        //     memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(double));
+        // }
+        out_tt[step] = t;
+        memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(double));
+        step++;
+    }
+
+    // Free Memory:
+    free(ffavg_);
+    free(yy2pred_);
+    free(ff2_);
+    free(ff1_);
+    free(yy2_);
+    free(yy1_);
+    free(yy);
+}
 #endif // GNCLIB_IMPLEMENTATION
