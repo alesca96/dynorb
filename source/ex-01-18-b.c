@@ -1,4 +1,6 @@
 #define DYNORB_IMPLEMENTATION
+#define USE_DOUBLE
+// #define USE_CBLAS
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

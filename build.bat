@@ -32,3 +32,8 @@ echo Executing the program: .\bin\release\out.exe
 .\bin\release\out.exe
 
 
+@REM -Wall ^
+@REM -Wextra ^
+@REM -Werror ^
+@REM -pedantic ^
+@REM -std=c99 ^

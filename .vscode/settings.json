@@ -4,6 +4,7 @@
         "istream": "c",
         "limits": "c",
         "string_view": "c",
-        "cmath": "c"
+        "cmath": "c",
+        "dynorb_.h": "c"
     }
 }
