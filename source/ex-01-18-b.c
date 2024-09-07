@@ -1,5 +1,5 @@
 #define DYNORB_IMPLEMENTATION
-#define USE_DOUBLE
+#define USE_DOUBLE // USE_FLOAT // USE_DOUBLE
 // #define USE_CBLAS
 #include <math.h>
 #include <stdio.h>
@@ -12,54 +12,54 @@
 
 typedef struct
 {
-    double F0;
-    double m;
-    double om_n;
-    double zeta;
-    double om;
+    real F0;
+    real m;
+    real om_n;
+    real zeta;
+    real om;
 
 } SimpHarmOscParams;
 
-void SimpHarmOsc(const double in_t, const double *in_yy, const void *in_params, double *out_ff)
+void SimpHarmOsc(const real in_t, const real *in_yy, const void *in_params, real *out_ff)
 {
     // Parameters:
     SimpHarmOscParams *p = (SimpHarmOscParams *)in_params;
-    double F0 = p->F0;
-    double m = p->m;
-    double om_n = p->om_n;
-    double zeta = p->zeta;
-    double om = p->om;
+    real F0 = p->F0;
+    real m = p->m;
+    real om_n = p->om_n;
+    real zeta = p->zeta;
+    real om = p->om;
 
     // Simple Harmonic Oscillator: out_ff = dyy/dt
     out_ff[0] = in_yy[1];
     out_ff[1] = (F0 / m) * sin(om * in_t) - 2 * zeta * om_n * in_yy[1] - (om_n * om_n) * in_yy[0];
 }
 
-void SimpHarmOscAnalyticalSolution(double t, const double *yy0, double *x_analytical, const void *params)
+void SimpHarmOscAnalyticalSolution(real t, const real *yy0, real *x_analytical, const void *params)
 {
 
     // Initial Conditions:
-    double x0 = yy0[0];
-    double x_dot0 = yy0[1];
+    real x0 = yy0[0];
+    real x_dot0 = yy0[1];
     // Parameters:
     SimpHarmOscParams *p = (SimpHarmOscParams *)params;
-    double F0 = p->F0;
-    double m = p->m;
-    double om_n = p->om_n;
-    double zeta = p->zeta;
-    double om = p->om;
+    real F0 = p->F0;
+    real m = p->m;
+    real om_n = p->om_n;
+    real zeta = p->zeta;
+    real om = p->om;
     // Intermediate Variables:
-    double zeta2 = zeta * zeta;
-    double om2 = om * om;
-    double om_n2 = om_n * om_n;
-    double omom_n = om * om_n;
-    double om_d = om_n * sqrt(1 - zeta2);
-    double _2omom_nzeta = (2 * omom_n * zeta);
-    double F0m = (F0 / m);
+    real zeta2 = zeta * zeta;
+    real om2 = om * om;
+    real om_n2 = om_n * om_n;
+    real omom_n = om * om_n;
+    real om_d = om_n * sqrt(1 - zeta2);
+    real _2omom_nzeta = (2 * omom_n * zeta);
+    real F0m = (F0 / m);
     // Coefficients:
-    double den = ((om_n2 - om2) * (om_n2 - om2)) + (_2omom_nzeta * _2omom_nzeta);
-    double A = (zeta * (om_n / om_d) * x0) + (x_dot0 / om_d) + (((om2 + ((2 * zeta2 - 1) * om_n2)) / (den)) * (om / om_d) * F0m);
-    double B = (x0) + ((_2omom_nzeta / den) * F0m);
+    real den = ((om_n2 - om2) * (om_n2 - om2)) + (_2omom_nzeta * _2omom_nzeta);
+    real A = (zeta * (om_n / om_d) * x0) + (x_dot0 / om_d) + (((om2 + ((2 * zeta2 - 1) * om_n2)) / (den)) * (om / om_d) * F0m);
+    real B = (x0) + ((_2omom_nzeta / den) * F0m);
     // Position x(t):
     *x_analytical = (exp(-zeta * om_n * t) * (A * sin(om_d * t) + B * cos(om_d * t))) + ((F0m / den) * (((om_n2 - om2) * sin(om * t)) - (_2omom_nzeta * cos(om * t))));
 }
@@ -78,12 +78,12 @@ int main(void)
         };
 
     // Step 1: Initial conditions:
-    const int sys_size = 2;             // System size (2 ODEs)
-    const double t0 = 0.0;              // Initial time
-    const double t1 = 110.0;            // Final time
-    const double x0 = 0.0;              // Initial Position
-    const double x_dot0 = 0.0;          // Initial Velocity
-    const double yy0[2] = {x0, x_dot0}; // Initial State
+    const int sys_size = 2;           // System size (2 ODEs)
+    const real t0 = 0.0;              // Initial time
+    const real t1 = 110.0;            // Final time
+    const real x0 = 0.0;              // Initial Position
+    const real x_dot0 = 0.0;          // Initial Velocity
+    const real yy0[2] = {x0, x_dot0}; // Initial State
 
     // Step 2: Collect Data into _dynorb_odeSys structure:
     _dynorb_odeSys SimpHarmOscSys = {
@@ -92,21 +92,21 @@ int main(void)
         .sys_size = sys_size,
         .t0 = t0,
         .t1 = t1,
-        .yy0 = yy0};
+        .yy0 = yy0,
+        .tt = NULL,
+        .yyt = NULL};
 
     // Step 3: Set up Integration:
-    const int rk_order = 4; // RK method
-    double h = 0.5;         // Step size
+    real h = 0.5; // Step size
     int num_steps = (int)(floor((t1 - t0) / h) + 1);
     printf("Time Step Size: <h = %f [s]>\n", h);
     printf("Number Steps: <num_steps = %d>\n", num_steps);
+    // Memory Allocation For Solution:
+    SimpHarmOscSys.tt = (real *)malloc(num_steps * sizeof(real));             // Allocate memory for time array:
+    SimpHarmOscSys.yyt = (real *)malloc(num_steps * sys_size * sizeof(real)); // Allocate memory for solution array:
 
-    // return 0;
-    double *tt = (double *)malloc(num_steps * sizeof(double));             // Allocate memory for time array:
-    double *yyt = (double *)malloc(num_steps * sys_size * sizeof(double)); // Allocate memory for solution array:
-
-    // Step 5: Perform Integration using custom RK method:
-    _dynorb_rk1to4(&SimpHarmOscSys, rk_order, h, num_steps, tt, yyt);
+    // Step 4: Perform Integration using custom RK method:
+    _dynorb_rk4(&SimpHarmOscSys, h, num_steps);
 
     // Step 5: Open file to store results
     FILE *outfile = fopen("./data/ex_01_18b.txt", "w");
@@ -120,17 +120,15 @@ int main(void)
     for (int i = 0; i < num_steps - 1; i++) // -1 beacause last line might be spurious
     {
         // Analytical Solution
-        double x_a = 0.0;
-        SimpHarmOscAnalyticalSolution(tt[i], yy0, &x_a, &p);
-        fprintf(outfile, "%.10f %.10f %.10f %.10f\n", tt[i], yyt[i * sys_size], yyt[i * sys_size + 1], x_a);
+        real x_a = 0.0;
+        SimpHarmOscAnalyticalSolution(SimpHarmOscSys.tt[i], yy0, &x_a, &p);
+        fprintf(outfile, "%.10f %.10f %.10f %.10f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.yyt[i * sys_size], SimpHarmOscSys.yyt[i * sys_size + 1], x_a);
     }
 
-    // Closing the file:
-    fclose(outfile);
-
     // Step 7: Free Memory and Close Data File:
-    free(yyt);
-    free(tt);
+    fclose(outfile);
+    free(SimpHarmOscSys.yyt);
+    free(SimpHarmOscSys.tt);
 
     /* ==========================================================
      * GNUPLOT: Use Gnuplot to plot the data

@@ -2,6 +2,9 @@
  * **************** TODO: add description *************
  * **************************************************** */
 
+#define DYNORB_IMPLEMENTATION
+#define USE_DOUBLE // USE_FLOAT
+
 /* ASSUMPTIONS:
  * 1. Code is written using COLUMN MAJOR convention (see CBLAS).
 
