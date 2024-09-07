@@ -86,7 +86,7 @@ int main(void)
 
     // Step 2: Collect Data into _dynorb_odeSys structure:
     _dynorb_odeSys SimpHarmOscSys = {
-        .odeFunction = (const _dynorb_odeFun *)SimpHarmOsc,
+        .odeFunction = (_dynorb_odeFun *)SimpHarmOsc,
         .params = &p,
         .sys_size = sys_size,
         .t0 = t0,
