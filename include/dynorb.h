@@ -1,14 +1,12 @@
 /* ****************************************************
- * **************** TODO: add description *************
+ * ****************** DYNORB HEADER *******************
  * **************************************************** */
 
 /* ASSUMPTIONS:
- * 1. Code is written using COLUMN MAJOR convention (see CBLAS).
- * 2. Stride different from 1 not available in my implementation.
+ * 1. Code uses COLUMN MAJOR convention (similar to CBLAS).
+ * 2. Strides other than 1 are not supported in this implementation.
+ */
 
-*/
-
-/* Code Starts Here: */
 #ifndef DYNORB_H_
 #define DYNORB_H_
 
@@ -31,6 +29,7 @@ typedef float real;
 #endif
 
 #else
+
 /* Fallback CBLAS-like enums: */
 typedef enum CBLAS_LAYOUT
 {
@@ -64,29 +63,29 @@ typedef enum CBLAS_SIDE
 } CBLAS_SIDE;
 #endif
 
-/* Includes: */
+/* Standard C library includes: */
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> // For memcpy
+#include <string.h>
 #include <float.h>
 
-/* CBLAS-like functions: */
+/* Fallback CBLAS-like functions: */
 #ifndef USE_CBLAS
 void stride_warning(void);
 void _dynorb_raxpy(const int N, const real alpha, const real *X,
                    const int incX, real *Y, const int incY);
 #endif
 
-/* Small Functions: */
+/* Utility functions: */
 double min(double a, double b);
 double max(double a, double b);
 
-/* Generic ODE Function: */
+/* ODE Function Type: */
 typedef void(_dynorb_odeFun)(const double in_t, const double *in_yy, const void *in_params, double *out_dyydt);
 
-/* ODE System Structure: */
+/* ODE System Structure Type: */
 typedef struct
 {
     const _dynorb_odeFun *odeFunction; // Pointer to the ODE function
@@ -99,20 +98,57 @@ typedef struct
 } _dynorb_odeSys;
 
 /* Function Declaration: */
+
+/**
+ *
+ * @brief Performs Runge-Kutta (RK1 to RK4) numerical integration for ODE systems.
+ *
+ * This function integrates an ODE system using a specified order of the Runge-Kutta method (1, 2, 3, or 4).
+ *
+ * @param[in] in_sys Pointer to the structure defining the ODE system.
+ * @param[in] in_rk_order Order of the Runge-Kutta method (1, 2, 3, or 4).
+ * @param[in] in_h Time step size for the integration.
+ * @param[in] in_n_steps Number of steps for the integration.
+ * @param[out] out_tt Pointer to an array where time points will be stored.
+ * @param[out] out_yyt Pointer to an array where the state vectors at each time point will be stored.
+ *
+ * This function uses a column-major convention.
+ *
+ * @return Void.
+ *
+ */
 void _dynorb_rk1to4(_dynorb_odeSys *in_sys, const int in_rk_order, const double in_h, const int in_n_steps, double *out_tt, double *out_yyt);
+
+/**
+ *
+ * @brief Performs Heun Predictor-Corrector numerical integration for ODE systems.
+ *
+ * This function integrates an ODE system using Heun Predictor-Corrector method.
+ *
+ * @param[in] in_sys Pointer to the structure defining the ODE system.
+ * @param[in] in_h Time step size for the integration.
+ * @param[in] in_n_steps Number of steps for the integration.
+ * @param[out] out_tt Pointer to an array where time points will be stored.
+ * @param[out] out_yyt Pointer to an array where the state vectors at each time point will be stored.
+ *
+ * This function uses a column-major convention.
+ *
+ * @return Void.
+ *
+ */
 void _dynorb_heun_(_dynorb_odeSys *in_sys, double in_h, const int in_n_steps, double *out_tt, double *out_yyt);
 
 #endif // DYNORB_H_
 
 /*
  * **************************************************** *
- * ************* FUNCTIONS IMPLEMENTATION ************* *
+ * ************* DYNORN IMPLEMENTATION ************* *
  * **************************************************** *
  */
 
 #ifdef DYNORB_IMPLEMENTATION
 
-/* CBLAS-like functions: */
+/* Fallback CBLAS-like functions: */
 #ifndef USE_CBLAS /* fallback to my implementation-> */
 void stride_warning(void)
 {
@@ -137,7 +173,7 @@ void _dynorb_raxpy(const int N, const real alpha, const real *X,
 }
 #endif
 
-/* Small Functions: */
+/* Utility functions: */
 double min(double a, double b)
 {
     return (a < b) ? a : b;
@@ -148,21 +184,9 @@ double max(double a, double b)
     return (a > b) ? a : b;
 }
 
+/* Function Declaration: */
 void _dynorb_rk1to4(_dynorb_odeSys *in_sys, const int in_rk_order, const double in_h, const int in_n_steps, double *out_tt, double *out_yyt)
 {
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     * Function for performing Runge-Kutta numerical integration
-     * for ODE systems of various orders (RK1 to RK4).
-     *
-     * The input parameters:
-     * - in_sys: Pointer to the structure defining the ODE system.
-     * - in_rk_order: Order of the Runge-Kutta method (1, 2, 3, or 4).
-     * - in_h: Time step size.
-     * - out_tt: Output Pointer to array to store time points.
-     * - out_yyt: Output Pointer to array to store the state vectors at each time point.
-     *
-     * This function uses a column-major convention.
-     * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _dynorb_odeFun
     const void *params = in_sys->params;               // Pointer to params
@@ -322,19 +346,6 @@ void _dynorb_rk1to4(_dynorb_odeSys *in_sys, const int in_rk_order, const double 
 
 void _dynorb_heun_(_dynorb_odeSys *in_sys, double in_h, const int in_n_steps, double *out_tt, double *out_yyt)
 {
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     * Function for performing Heun Predictor-Corrector
-        numerical integration for ODE systems.
-     *
-     * The input parameters:
-     * - in_sys: Pointer to the structure defining the ODE system.
-     * - in_rk_order: Order of the Runge-Kutta method (1, 2, 3, or 4).
-     * - in_h: Time step size.
-     * - out_tt: Output Pointer to array to store time points.
-     * - out_yyt: Output Pointer to array to store the state vectors at each time point.
-     *
-     * This function uses a column-major convention.
-     * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
     // Open up _dynorb_odeSys
     _dynorb_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _dynorb_odeFun
     const void *params = in_sys->params;               // Pointer to params

@@ -5,6 +5,7 @@
         "limits": "c",
         "string_view": "c",
         "cmath": "c",
-        "dynorb_.h": "c"
+        "dynorb_.h": "c",
+        "assert.h": "c"
     }
 }
