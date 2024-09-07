@@ -103,9 +103,9 @@ typedef struct
 
 /**
  *
- * @brief Performs Runge-Kutta (RK1 to RK4) numerical integration for ODE systems.
+ * @brief Performs Euler (RK1) numerical integration for ODE systems.
  *
- * This function integrates an ODE system using a specified order of the Runge-Kutta method of order 1.
+ * This function integrates an ODE system using a specified order of the Euler (Runge-Kutta order 1) method.
  *
  * @param[in] in_sys Pointer to the structure defining the ODE system.
  * @param[in] in_h Time step size for the integration.
@@ -117,8 +117,56 @@ typedef struct
  *
  */
 void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
+
+/**
+ *
+ * @brief Performs Heun (RK2) numerical integration for ODE systems.
+ *
+ * This function integrates an ODE system using a specified order of the Heun (Runge-Kutta order 2) method.
+ *
+ * @param[in] in_sys Pointer to the structure defining the ODE system.
+ * @param[in] in_h Time step size for the integration.
+ * @param[in] in_n_steps Number of steps for the integration.
+ *
+ * This function uses a column-major convention.
+ *
+ * @return Void.
+ *
+ */
 void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
+
+/**
+ *
+ * @brief Performs Heun (RK3) numerical integration for ODE systems.
+ *
+ * This function integrates an ODE system using a specified order of the Runge-Kutta order 3 method.
+ *
+ * @param[in] in_sys Pointer to the structure defining the ODE system.
+ * @param[in] in_h Time step size for the integration.
+ * @param[in] in_n_steps Number of steps for the integration.
+ *
+ * This function uses a column-major convention.
+ *
+ * @return Void.
+ *
+ */
 void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
+
+/**
+ *
+ * @brief Performs Heun (RK4) numerical integration for ODE systems.
+ *
+ * This function integrates an ODE system using a specified order of the Runge-Kutta order 4 method.
+ *
+ * @param[in] in_sys Pointer to the structure defining the ODE system.
+ * @param[in] in_h Time step size for the integration.
+ * @param[in] in_n_steps Number of steps for the integration.
+ *
+ * This function uses a column-major convention.
+ *
+ * @return Void.
+ *
+ */
 void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
 
 /**
@@ -237,17 +285,17 @@ void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
         {
             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
             out_tt[step] = t;
-            printf("_dynorb_rk1to4 : Breaking From Loop<t = %f [s]>", t);
+            printf("_dynorb_rk1 : Breaking From Loop<t = %f [s]>", t);
         }
         memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
         out_tt[step] = t;
     }
 
     // Free Memory:
-    // printf("_dynorb_rk1to4: Begin Freeing Memory:\n");
+    // printf("_dynorb_rk1: Begin Freeing Memory:\n");
     free(ff);
     free(yy);
-    // printf("_dynorb_rk1to4: Done Freeing Memory:\n");
+    // printf("_dynorb_rk1: Done Freeing Memory:\n");
 }
 
 void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
@@ -319,7 +367,7 @@ void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
         {
             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
             out_tt[step] = t;
-            printf("_dynorb_rk1to4 : Breaking From Loop<t = %f [s]>", t);
+            printf("_dynorb_rk2 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
         memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
@@ -327,11 +375,11 @@ void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     }
 
     // Free Memory:
-    // printf("_dynorb_rk1to4: Begin Freeing Memory:\n");
+    // printf("_dynorb_rk2: Begin Freeing Memory:\n");
     free(yy_inner);
     free(ff);
     free(yy);
-    // printf("_dynorb_rk1to4: Done Freeing Memory:\n");
+    // printf("_dynorb_rk2: Done Freeing Memory:\n");
 }
 
 void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
@@ -410,7 +458,7 @@ void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
         {
             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
             out_tt[step] = t;
-            printf("_dynorb_rk1to4 : Breaking From Loop<t = %f [s]>", t);
+            printf("_dynorb_rk3 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
         memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
@@ -418,11 +466,11 @@ void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     }
 
     // Free Memory:
-    // printf("_dynorb_rk1to4: Begin Freeing Memory:\n");
+    // printf("_dynorb_rk3: Begin Freeing Memory:\n");
     free(yy_inner);
     free(ff);
     free(yy);
-    // printf("_dynorb_rk1to4: Done Freeing Memory:\n");
+    // printf("_dynorb_rk3: Done Freeing Memory:\n");
 }
 
 void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
@@ -509,7 +557,7 @@ void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
         {
             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
             out_tt[step] = t;
-            printf("_dynorb_rk1to4 : Breaking From Loop<t = %f [s]>", t);
+            printf("_dynorb_rk4 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
         memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
@@ -517,11 +565,11 @@ void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     }
 
     // Free Memory:
-    // printf("_dynorb_rk1to4: Begin Freeing Memory:\n");
+    // printf("_dynorb_rk4: Begin Freeing Memory:\n");
     free(yy_inner);
     free(ff);
     free(yy);
-    // printf("_dynorb_rk1to4: Done Freeing Memory:\n");
+    // printf("_dynorb_rk4: Done Freeing Memory:\n");
 }
 
 void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
