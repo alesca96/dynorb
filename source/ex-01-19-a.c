@@ -73,8 +73,7 @@ int main(void)
             .m = 1.0,
             .om_n = 1.0,
             .om = 0.4 * p.om_n,
-            .zeta = 0.03
-
+            .zeta = 0.03,
         };
 
     // Step 1: Initial conditions:
