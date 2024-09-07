@@ -78,9 +78,14 @@ void _dynorb_raxpy(const int N, const real alpha, const real *X,
                    const int incX, real *Y, const int incY);
 #endif
 
+/* MACROS: */
+#define EL(M, nrows, ncols, i, j) M[(j * (nrows)) + i]
+
 /* Utility functions: */
 real min(real a, real b);
 real max(real a, real b);
+void matcpy(real *dst_M, const real *src_M, const int start_idx_row, const int start_idx_col, const int end_idx_row, const int end_idx_col, const int src_ncols, const int dst_ncols);
+void matprint(const real *in_M, const int nrows, const int ncols);
 
 /* ODE Function Type: */
 typedef void(_dynorb_odeFun)(const real in_t, const real *in_yy, const void *in_params, real *out_dyydt);
@@ -88,14 +93,14 @@ typedef void(_dynorb_odeFun)(const real in_t, const real *in_yy, const void *in_
 /* ODE System Structure Type: */
 typedef struct
 {
-    const _dynorb_odeFun *odeFunction; // Pointer to the ODE function
-    const void *params;                // Pointer to the parameters for the ODE function
-    const real *yy0;                   // Pointer to the initial state array
-    const real t0;                     // Initial time
-    const real t1;                     // Final time
-    const int sys_size;                // Size of the system (number of equations)
-    real *tt;                          // Time Steps of the Solution
-    real *yyt;                         // Solution Array
+    _dynorb_odeFun *odeFunction; // Pointer to the ODE function
+    const void *params;          // Pointer to the parameters for the ODE function
+    const real *yy0;             // Pointer to the initial state array
+    const real t0;               // Initial time
+    const real t1;               // Final time
+    const int sys_size;          // Size of the system (number of equations)
+    real *tt;                    // Time Steps of the Solution
+    real *yyt;                   // Solution Array
 
 } _dynorb_odeSys;
 
@@ -209,7 +214,7 @@ void stride_warning(void)
 void _dynorb_raxpy(const int N, const real alpha, const real *X,
                    const int incX, real *Y, const int incY)
 {
-    if (incY != 1 || incX != 0)
+    if (incY != 1 || incX != 1)
     {
         stride_warning();
     }
@@ -232,7 +237,43 @@ real max(real a, real b)
     return (a > b) ? a : b;
 }
 
-/* Function Declaration: */
+void matcpy(real *dst_M, const real *src_M, const int start_idx_row, const int start_idx_col, const int end_idx_row, const int end_idx_col, const int src_ncols, const int dst_ncols)
+{
+    // TODO: Make more Powrful by allowing copying in a portion of the dest.
+    for (int i = start_idx_row; i <= end_idx_row; ++i)
+    {
+        for (int j = start_idx_col; j <= end_idx_col; ++j)
+        {
+            // Ensure the destination and source have the same number of columns for the operation
+            if (i < 0 || j < 0 || i >= (end_idx_row + 1) || j >= (end_idx_col + 1))
+            {
+                fprintf(stderr, "Index out of bounds\n");
+                return;
+            }
+            EL(dst_M, dst_ncols, end_idx_row - start_idx_row + 1, i - start_idx_row, j - start_idx_col) = EL(src_M, src_ncols, end_idx_row - start_idx_row + 1, i, j);
+        }
+    }
+}
+
+void matprint(const real *in_M, const int nrows, const int ncols)
+{
+    printf("[\n");
+    for (int i = 0; i < nrows; ++i)
+    {
+        printf("    ");
+        for (int j = 0; j < ncols; ++j)
+        {
+            printf("%.4f", EL(in_M, nrows, ncols, i, j));
+            if (j < ncols - 1)
+            {
+                printf(", ");
+            }
+        }
+        printf(";\n");
+    }
+    printf("]\n");
+}
+/* Core Library Functions: */
 void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
@@ -248,7 +289,7 @@ void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     //  RK1 (Euler)
     int n_stages = 1;
     real a = 0.0; // Note: a is [1 x 1]
-    real b = 1.0; // Note: b is [1 x 1]
+    // real b = 1.0; // Note: b is [1 x 1]
     real c = 1.0; // Note: c is [1 x 1]
 
     // Allocate Memory for Current State, Inner State:
@@ -312,9 +353,9 @@ void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
 
     //  RK2 (Heun)
     int n_stages = 2;
-    real a[2]; // Note: a is [1 x 2]
-    real b[2]; // Note: b is [2 x 1]
-    real c[2]; // Note: c is [2 x 1]
+    real a[2] = {0.0, 0.0}; // Note: a is [1 x 2]
+    real b[2] = {0.0, 0.0}; // Note: b is [2 x 1]
+    real c[2] = {0.0, 0.0}; // Note: c is [2 x 1]
     a[1] = 1.0;
     b[0] = 0.0;
     b[1] = 1.0;

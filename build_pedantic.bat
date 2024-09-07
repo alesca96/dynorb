@@ -19,7 +19,13 @@ if exist .\bin\release\out.exe (
 
 :: Compile the source file to create out.exe
 gcc ^
+-Wall ^
+-Wextra ^
+-Werror ^
+-pedantic ^
+-std=c99 ^
 -O2 ^
+-D_GNU_SOURCE ^
 -I .\include ^
 -I /cygwin64/usr/include ^
 -L /cygwin64/usr/lib ^

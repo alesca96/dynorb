@@ -86,7 +86,7 @@ int main(void)
 
     // Step 2: Collect Data into _dynorb_odeSys structure:
     _dynorb_odeSys SimpHarmOscSys = {
-        .odeFunction = (const _dynorb_odeFun *)SimpHarmOsc,
+        .odeFunction = (_dynorb_odeFun *)SimpHarmOsc,
         .params = &p,
         .sys_size = sys_size,
         .t0 = t0,
@@ -142,11 +142,16 @@ int main(void)
         "'./data/ex_01_18b.txt' using 1:3 with points pt 7 ps 0.5 lc rgb 'blue' title 'v(t)', "
         "'./data/ex_01_18b.txt' using 1:4 with lines lc rgb 'black' title 'x_a(t)'\n";
 
-    FILE *gnuplot = popen("gnuplot -persistent", "w");
+    // Use _popen and _pclose for Windows compatibility
+    FILE *gnuplot = (FILE *)popen("gnuplot -persistent", "w");
     if (gnuplot)
     {
         fprintf(gnuplot, "%s", plot_command);
         pclose(gnuplot);
+    }
+    else
+    {
+        fprintf(stderr, "Error: Unable to open pipe to gnuplot.\n");
     }
 
     return 0;
