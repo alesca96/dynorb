@@ -1,5 +1,0 @@
-set terminal qt
-set title 'Example 18 Chapter 01: Simple Harmonic Oscillator using Custom RK4'
-set xlabel 'Time t [s]'
-set ylabel 'x(t) [m], v(t) [m/s], x_a(t) [m]'
-plot './data/ex_01_18b.txt' using 1:2 with points pt 7 ps 0.5 lc rgb 'red' title 'x(t)', './data/ex_01_18b.txt' using 1:3 with points pt 7 ps 0.5 lc rgb 'blue' title 'v(t)', './data/ex_01_18b.txt' using 1:4 with lines lc rgb 'black' title 'x_a(t)'
