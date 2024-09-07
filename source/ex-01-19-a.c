@@ -1,9 +1,9 @@
-#define GNCLIB_IMPLEMENTATION
+#define DYNORB_IMPLEMENTATION
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>               // For memcpy
-#include "..\include\gnc101lib.h" // Include your custom RK header file
+#include <string.h>            // For memcpy
+#include "..\include\dynorb.h" // Include your custom RK header file
 
 /* Define the system of ODEs: example 1.18 (Chapter 1, pag.45)
     REF: Curtis, H.D., 2020. Orbital mechanics for engineering students (3rd Edit.) */
@@ -83,9 +83,9 @@ int main(void)
     const double x_dot0 = 0.0;          // Initial Velocity
     const double yy0[2] = {x0, x_dot0}; // Initial State
 
-    // Step 2: Collect Data into _gnc_odeSys structure:
-    _gnc_odeSys SimpHarmOscSys = {
-        .odeFunction = (const _gnc_odeFun *)SimpHarmOsc,
+    // Step 2: Collect Data into _dynorb_odeSys structure:
+    _dynorb_odeSys SimpHarmOscSys = {
+        .odeFunction = (const _dynorb_odeFun *)SimpHarmOsc,
         .params = &p,
         .sys_size = sys_size,
         .t0 = t0,
@@ -93,9 +93,8 @@ int main(void)
         .yy0 = yy0};
 
     // Step 3: Set up Integration:
-    const int rk_order = 4; // RK method
-    double h = 0.5;         // Step size
-    int num_steps = (int)(floor((t1 - t0) / h) + 1);
+    double h = 1.0; // 1.0; // Step size
+    int num_steps = (ceil((t1 - t0) / h) + 1);
     printf("Time Step Size: <h = %f [s]>\n", h);
     printf("Number Steps: <num_steps = %d>\n", num_steps);
 
@@ -104,10 +103,10 @@ int main(void)
     double *yyt = (double *)malloc(num_steps * sys_size * sizeof(double)); // Allocate memory for solution array:
 
     // Step 5: Perform Integration using custom RK method:
-    _gnc_rk1to4(&SimpHarmOscSys, rk_order, h, num_steps, tt, yyt);
+    _dynorb_heun_(&SimpHarmOscSys, h, num_steps, tt, yyt);
 
     // Step 5: Open file to store results
-    FILE *outfile = fopen("./data/ex_01_18b.txt", "w");
+    FILE *outfile = fopen("./data/ex_01_19a.txt", "w");
     if (outfile == NULL)
     {
         perror("Error opening file");
@@ -135,14 +134,14 @@ int main(void)
      * ========================================================== */
 
     const char *plot_command =
-        "set terminal qt\n"
-        "set title 'Example 18 Chapter 01: Simple Harmonic Oscillator using Custom RK4'\n"
+        "set terminal qt enhanced\n"
+        "set title 'Example 19 Chapter 01: Simple Harmonic Oscillator using Custom Huen'\n"
         "set xlabel 'Time t [s]'\n"
-        "set ylabel 'x(t) [m], v(t) [m/s], x_a(t) [m]'\n"
-        "plot './data/ex_01_18b.txt' using 1:2 with points pt 7 ps 0.5 lc rgb 'red' title 'x(t)', "
-        "'./data/ex_01_18b.txt' using 1:3 with points pt 7 ps 0.5 lc rgb 'blue' title 'v(t)', "
-        "'./data/ex_01_18b.txt' using 1:4 with lines lc rgb 'black' title 'x_a(t)'\n";
+        "set ylabel 'x(t) [m], x_{a}(t) [m]'\n"
+        "plot './data/ex_01_19a.txt' using 1:2 with lines lc rgb 'red' title 'x(t)', "
+        "'./data/ex_01_19a.txt' using 1:4 with lines lc rgb 'black' title 'x_{a}(t)'\n";
 
+    // "'./data/ex_01_19a.txt' using 1:3 with points pt 7 ps 0.5 lc rgb 'blue' title 'v(t)', "
     FILE *gnuplot = popen("gnuplot -persistent", "w");
     if (gnuplot)
     {

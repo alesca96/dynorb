@@ -7,8 +7,8 @@
 
 */
 
-#ifndef GNC101LIB_C_
-#define GNC101LIB_C_
+#ifndef DYNORB_H_
+#define DYNORB_H_
 
 /* Includes: */
 // TODO: #include <cblas.h>
@@ -24,22 +24,22 @@ double min(double a, double b);
 double max(double a, double b);
 
 /* Generic ODE Function: */
-typedef void(_gnc_odeFun)(const double in_t, const double *in_yy, const void *in_params, double *out_dyydt);
+typedef void(_dynorb_odeFun)(const double in_t, const double *in_yy, const void *in_params, double *out_dyydt);
 
 /* ODE System Structure: */
 typedef struct
 {
-    const _gnc_odeFun *odeFunction; // Pointer to the ODE function
-    const void *params;             // Pointer to the parameters for the ODE function
-    const double *yy0;              // Pointer to the initial state array
-    const double t0;                // Initial time
-    const double t1;                // Final time
-    const int sys_size;             // Size of the system (number of equations)
+    const _dynorb_odeFun *odeFunction; // Pointer to the ODE function
+    const void *params;                // Pointer to the parameters for the ODE function
+    const double *yy0;                 // Pointer to the initial state array
+    const double t0;                   // Initial time
+    const double t1;                   // Final time
+    const int sys_size;                // Size of the system (number of equations)
 
-} _gnc_odeSys;
+} _dynorb_odeSys;
 
 /* **************************************************** */
-void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, const int in_n_steps, double *out_tt, double *out_yyt);
+void _dynorb_rk1to4(_dynorb_odeSys *in_sys, const int in_rk_order, const double in_h, const int in_n_steps, double *out_tt, double *out_yyt);
 /*
  * Function for performing Runge-Kutta numerical integration
  * for ODE systems of various orders (RK1 to RK4).
@@ -55,7 +55,7 @@ void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, 
  * **************************************************** */
 
 /* **************************************************** */
-void _gnc_heun_(_gnc_odeSys *in_sys, double in_h, const int in_n_steps, double *out_tt, double *out_yyt);
+void _dynorb_heun_(_dynorb_odeSys *in_sys, double in_h, const int in_n_steps, double *out_tt, double *out_yyt);
 /*
  * Function for performing Heun Predictor-Corrector
     numerical integration for ODE systems.
@@ -70,7 +70,7 @@ void _gnc_heun_(_gnc_odeSys *in_sys, double in_h, const int in_n_steps, double *
  * This function uses a column-major convention.
  * **************************************************** */
 
-#endif // GNC101LIB_C_
+#endif // DYNORB_H_
 
 /*
  * **************************************************** *
@@ -78,7 +78,7 @@ void _gnc_heun_(_gnc_odeSys *in_sys, double in_h, const int in_n_steps, double *
  * **************************************************** *
  */
 
-#ifdef GNCLIB_IMPLEMENTATION
+#ifdef DYNORB_IMPLEMENTATION
 
 /* Small Functions: */
 double min(double a, double b)
@@ -91,15 +91,15 @@ double max(double a, double b)
     return (a > b) ? a : b;
 }
 
-void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, const int in_n_steps, double *out_tt, double *out_yyt)
+void _dynorb_rk1to4(_dynorb_odeSys *in_sys, const int in_rk_order, const double in_h, const int in_n_steps, double *out_tt, double *out_yyt)
 {
-    // Open up _gnc_odeSys [TODO: remove this]
-    _gnc_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _gnc_odeFun
-    const void *params = in_sys->params;            // Pointer to params
-    const int sys_size = in_sys->sys_size;          // Size of System
-    const double *yy0 = in_sys->yy0;                // Pointer to Initial Conditions
-    double t0 = in_sys->t0;                         // Initial time
-    double t1 = in_sys->t1;                         // Final time
+    // Open up _dynorb_odeSys [TODO: remove this]
+    _dynorb_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _dynorb_odeFun
+    const void *params = in_sys->params;               // Pointer to params
+    const int sys_size = in_sys->sys_size;             // Size of System
+    const double *yy0 = in_sys->yy0;                   // Pointer to Initial Conditions
+    double t0 = in_sys->t0;                            // Initial time
+    double t1 = in_sys->t1;                            // Final time
 
     // Declare n_stages and pointers for a, b, c
     int n_stages = 0;
@@ -232,7 +232,7 @@ void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, 
         {
             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(double));
             out_tt[step] = t;
-            printf("_gnc_rk1to4 : Breaking From Loop<t = %f [s]>", t);
+            printf("_dynorb_rk1to4 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
         memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(double));
@@ -240,25 +240,25 @@ void _gnc_rk1to4(_gnc_odeSys *in_sys, const int in_rk_order, const double in_h, 
     }
 
     // Free Memory:
-    // printf("_gnc_rk1to4: Begin Freeing Memory:\n");
+    // printf("_dynorb_rk1to4: Begin Freeing Memory:\n");
     free(yy_inner);
     free(ff);
     free(yy);
     free(c);
     free(b);
     free(a);
-    // printf("_gnc_rk1to4: Done Freeing Memory:\n");
+    // printf("_dynorb_rk1to4: Done Freeing Memory:\n");
 }
 
-void _gnc_heun_(_gnc_odeSys *in_sys, double in_h, const int in_n_steps, double *out_tt, double *out_yyt)
+void _dynorb_heun_(_dynorb_odeSys *in_sys, double in_h, const int in_n_steps, double *out_tt, double *out_yyt)
 {
-    // Open up _gnc_odeSys
-    _gnc_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _gnc_odeFun
-    const void *params = in_sys->params;            // Pointer to params
-    const int sys_size = in_sys->sys_size;          // Size of System
-    const double *yy0 = in_sys->yy0;                // Pointer to Initial Conditions
-    double t0 = in_sys->t0;                         // Initial time
-    double t1 = in_sys->t1;                         // Final time
+    // Open up _dynorb_odeSys
+    _dynorb_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _dynorb_odeFun
+    const void *params = in_sys->params;               // Pointer to params
+    const int sys_size = in_sys->sys_size;             // Size of System
+    const double *yy0 = in_sys->yy0;                   // Pointer to Initial Conditions
+    double t0 = in_sys->t0;                            // Initial time
+    double t1 = in_sys->t1;                            // Final time
 
     // Tolerance and Max number of steps:
     const double tol = 1.e-6;
@@ -345,7 +345,7 @@ void _gnc_heun_(_gnc_odeSys *in_sys, double in_h, const int in_n_steps, double *
         {
             printf("\n Maximum number of iterations: %d\n", max_iter);
             printf("Exceeded at time: %f\n", t1);
-            printf("In function '_gnc_heun_'\n\n");
+            printf("In function '_dynorb_heun_'\n\n");
             break;
         }
 
@@ -380,4 +380,4 @@ void _gnc_heun_(_gnc_odeSys *in_sys, double in_h, const int in_n_steps, double *
     free(yy1_);
     free(yy);
 }
-#endif // GNCLIB_IMPLEMENTATION
+#endif // DYNORB_IMPLEMENTATION
