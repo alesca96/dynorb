@@ -10,87 +10,34 @@
 #ifndef DYNORB_H_
 #define DYNORB_H_
 
-/* Double-Float switch: */
-#ifdef USE_DOUBLE
-typedef double real;
-#elif defined(USE_FLOAT)
-typedef float real;
-#else
-#error "Either USE_DOUBLE or USE_FLOAT must be defined"
-#endif
-
-/* CBLAS switch: */
-#ifdef USE_CBLAS
-#include <cblas.h>
-#ifdef USE_DOUBLE
-#define _dynorb_raxpy cblas_daxpy /* Double precision */
-#elif defined(USE_FLOAT)
-#define _dynorb_raxpy cblas_saxpy /* Single precision */
-#endif
-
-#else
-
-/* Fallback CBLAS-like enums: */
-typedef enum CBLAS_LAYOUT
-{
-    CblasRowMajor = 101,
-    CblasColMajor = 102
-} CBLAS_LAYOUT;
-
-typedef enum CBLAS_TRANSPOSE
-{
-    CblasNoTrans = 111,
-    CblasTrans = 112,
-    CblasConjTrans = 113
-} CBLAS_TRANSPOSE;
-
-typedef enum CBLAS_UPLO
-{
-    CblasUpper = 121,
-    CblasLower = 122
-} CBLAS_UPLO;
-
-typedef enum CBLAS_DIAG
-{
-    CblasNonUnit = 131,
-    CblasUnit = 132
-} CBLAS_DIAG;
-
-typedef enum CBLAS_SIDE
-{
-    CblasLeft = 141,
-    CblasRight = 142
-} CBLAS_SIDE;
-#endif
-
-/* Standard C library includes: */
+/* SATNDARD C-LIBS: */
 #include <assert.h>
+#include <float.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <float.h>
 
-/* Fallback CBLAS-like functions: */
-#ifndef USE_CBLAS
-void stride_warning(void);
-void _dynorb_raxpy(const int N, const real alpha, const real *X,
-                   const int incX, real *Y, const int incY);
+/* CBLAS SWITCH: */
+#ifdef USE_CBLAS
+#include <cblas.h>
+#endif
+
+/* DOUBLE-FLOAT SWITCH: */
+#ifdef USE_DOUBLE
+typedef double real;
+const bool real_is_double = 1;
+#elif defined(USE_FLOAT)
+typedef float real;
+const bool real_is_double = 0;
 #endif
 
 /* MACROS: */
 #define EL(M, nrows, ncols, i, j) M[(j * (nrows)) + i]
 
-/* Utility functions: */
-real min(real a, real b);
-real max(real a, real b);
-void matcpy(real *dst_M, const real *src_M, const int start_idx_row, const int start_idx_col, const int end_idx_row, const int end_idx_col, const int src_ncols, const int dst_ncols);
-void matprint(const real *in_M, const int nrows, const int ncols);
-
-/* ODE Function Type: */
+/* ODE FUNCTION AND SYSTEM: */
 typedef void(_dynorb_odeFun)(const real in_t, const real *in_yy, const void *in_params, real *out_dyydt);
-
-/* ODE System Structure Type: */
 typedef struct
 {
     _dynorb_odeFun *odeFunction; // Pointer to the ODE function
@@ -101,10 +48,22 @@ typedef struct
     const int sys_size;          // Size of the system (number of equations)
     real *tt;                    // Time Steps of the Solution
     real *yyt;                   // Solution Array
-
 } _dynorb_odeSys;
 
-/* Function Declaration: */
+/* UTILITY FUNCTIONS: */
+int min(int a, int b);
+int max(int a, int b);
+real rmin(real a, real b);
+real rmax(real a, real b);
+void matcpy(real *dst_M, const real *src_M, const int start_idx_row, const int start_idx_col, const int end_idx_row, const int end_idx_col, const int src_ncols, const int dst_ncols);
+void matprint(const real *in_M, const int nrows, const int ncols);
+
+/* Basic Linear Algebra Subroutines: */
+// Thin wrappers of CBLAS if USE_CBLAS. Else custum implementation.
+void _dynorb_raxpy(const int N, const real alpha, const real *X, real *Y);
+void _dynorb_rgemv(const bool TransposeA, const int M, const int N, const real alpha, const real *A, const real *X, const real beta, real *Y);
+
+/* CORE FUNCTIONS: */
 
 /**
  *
@@ -201,38 +160,75 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps);
 
 #ifdef DYNORB_IMPLEMENTATION
 
-/* Fallback CBLAS-like functions: */
-#ifndef USE_CBLAS /* fallback to my implementation-> */
-void stride_warning(void)
-{
-    printf("\nWARNING: Stride (inc_) different from 1 not supported.\n");
-    printf("         Stride set to default: 1.\n");
-    printf("         To use CBLAS: '#define USE_CBLAS'.\n\n");
+#ifdef USE_CBLAS /* CBLAS wrappers: */
+
+void _dynorb_raxpy(const int N, const real alpha, const real *X, real *Y)
+{ // Vector Sum: yy = alpha*xx + yy
+
+    if (real_is_double)
+    {
+        cblas_daxpy(N, (const double)alpha, (const double *)X, 1, (double *)Y, 1);
+    }
+    else // Real is Float
+    {
+        cblas_saxpy(N, (const float)alpha, (const float *)X, 1, (float *)Y, 1);
+    }
 }
 
-/* Vector Sum: */
-void _dynorb_raxpy(const int N, const real alpha, const real *X,
-                   const int incX, real *Y, const int incY)
-{
-    if (incY != 1 || incX != 1)
-    {
-        stride_warning();
-    }
+void _dynorb_rgemv(const bool TransposeA, const int M, const int N, const real alpha, const real *A, const real *X, const real beta, real *Y)
+{ // Matrix Vector Multiplication: yy = alpha*(A*xx) + beta*y
 
-    for (int i = 0; i < N; ++i)
+    if (real_is_double)
     {
-        Y[i] += (alpha * X[i]);
+        if (TransposeA)
+        {
+            cblas_dgemv(CblasColMajor, CblasTrans, M, N, (const double)alpha, (const double *)A, M, (const double *)X, 1, (const double)beta, (double *)Y, 1);
+        }
+        else // Not Transposed
+        {
+            cblas_dgemv(CblasColMajor, CblasNoTrans, M, N, (const double)alpha, (const double *)A, M, (const double *)X, 1, (const double)beta, (double *)Y, 1);
+        }
     }
+    else // Real is Float
+    {
+        if (TransposeA)
+        {
+            cblas_sgemv(CblasColMajor, CblasTrans, M, N, (const float)alpha, (const float *)A, M, (const float *)X, 1, (const float)beta, (float *)Y, 1);
+        }
+        else // Not Transposed
+        {
+            cblas_sgemv(CblasColMajor, CblasNoTrans, M, N, (const float)alpha, (const float *)A, M, (const float *)X, 1, (const float)beta, (float *)Y, 1);
+        }
+    }
+}
+
+#endif
+
+#ifndef USE_CBLAS /* BLAS-like Custom Implementation wrappers: */
+/* TODO: custom implementation-> */
+void IMPLEMENT_ALTERNATIVE_TO_CBLAS_FUNCTIONS(void)
+{
+    printf("I HAVE TO IMPLEMENT ALTERNATIVE TO CBLAS FUNCTIONS.\n");
 }
 #endif
 
 /* Utility functions: */
-real min(real a, real b)
+int min(int a, int b)
 {
     return (a < b) ? a : b;
 }
 
-real max(real a, real b)
+int max(int a, int b)
+{
+    return (a > b) ? a : b;
+}
+
+real rmin(real a, real b)
+{
+    return (a < b) ? a : b;
+}
+
+real rmax(real a, real b)
 {
     return (a > b) ? a : b;
 }
@@ -273,6 +269,7 @@ void matprint(const real *in_M, const int nrows, const int ncols)
     }
     printf("]\n");
 }
+
 /* Core Library Functions: */
 void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
 {
@@ -627,7 +624,7 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
 
     // Tolerance and Max number of steps:
     const real tol = 1.e-6;
-    const int max_iter = 100;
+    const int rmax_iter = 100;
 
     // Initialize Algorithm:
     real t = t0;
@@ -656,7 +653,7 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
     while (t < t1 && step < in_n_steps)
     {
         // Step Size:
-        in_h = min(in_h, t1 - t);
+        in_h = rmin(in_h, t1 - t);
 
         // Left Boundary of Interval:
         real t1_ = t;
@@ -675,7 +672,7 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
         int iter = 0;
 
         // Predictor-Corrector Loop
-        while (err > tol && iter <= max_iter)
+        while (err > tol && iter <= rmax_iter)
         {
             memcpy(yy2pred_, yy2_, sys_size * sizeof(real));
             odeFunction(t2_, yy2pred_, params, ff2_);
@@ -706,9 +703,9 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
             iter++;
         }
 
-        if (iter > max_iter)
+        if (iter > rmax_iter)
         {
-            printf("\n Maximum number of iterations: %d\n", max_iter);
+            printf("\n Maximum number of iterations: %d\n", rmax_iter);
             printf("Exceeded at time: %f\n", t1);
             printf("In function '_dynorb_heun_'\n\n");
             break;
@@ -717,20 +714,21 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
         // Update
         t += in_h;
         memcpy(yy, yy2_, sys_size * sizeof(real));
-
-        // if (step >= in_n_steps)
-        // {
-        //     out_tt = (real *)realloc(out_tt, (in_n_steps + 1) * sizeof(real));
-        //     out_yyt = (real *)realloc(out_yyt, (in_n_steps + 1) * sys_size * sizeof(real));
-        //     out_tt[step] = t;
-        //     memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-        //     printf("Number of estimated steps (in_n_steps = %d) surpassed. Using 'realloc'.\n", in_n_steps);
-        // }
-        // else
-        // {
-        //     out_tt[step] = t;
-        //     memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-        // }
+        /*
+        if (step >= in_n_steps)
+         {
+             out_tt = (real *)realloc(out_tt, (in_n_steps + 1) * sizeof(real));
+             out_yyt = (real *)realloc(out_yyt, (in_n_steps + 1) * sys_size * sizeof(real));
+             out_tt[step] = t;
+             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
+             printf("Number of estimated steps (in_n_steps = %d) surpassed. Using 'realloc'.\n", in_n_steps);
+         }
+         else
+         {
+             out_tt[step] = t;
+             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
+         }
+        */
         out_tt[step] = t;
         memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
         step++;

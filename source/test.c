@@ -1,6 +1,6 @@
 #define DYNORB_IMPLEMENTATION
 #define USE_DOUBLE
-// #define USE_CBLAS
+#define USE_CBLAS
 #include "..\include\dynorb.h" // Include your custom RK header file
 
 // Function to print test information
@@ -53,6 +53,8 @@ int main(void)
 
         // Use the macro to access elements
         matprint(matrix, 4, 3);
+
+        matprint(matrix, 3, 4);
     }
 
     /* TEST 3: */
@@ -64,7 +66,7 @@ int main(void)
         real src_M[12] = {1.0, 2.0, 3.0, 4.0, // transpose representation
                           5.0, 6.0, 7.0, 8.0,
                           9.0, 10.0, 11.0, 12.0};
-        real dst_M[12];
+        real dst_M[12] = {0.0};
 
         // Use the macro to access elements
         int nrows = 4;
@@ -103,7 +105,7 @@ int main(void)
         memcpy(C, B, 5 * sizeof(real));
 
         // Use cblas_saxpy to perform C = A + C (where C = B initially)
-        _dynorb_raxpy(n, 1.0, A, 1, C, 1);
+        _dynorb_raxpy(n, 1.0, A, C);
 
         // Print the result
         printf("Resulting COLUMN vector C = alpha* A + B:\n");
@@ -113,7 +115,59 @@ int main(void)
         matprint(C, 1, 5);
     }
 
-    /* TEST 5: */
+    /* TEST 6: */
+    {
+        const char *test_description = "Test Cblas-like Matrix Vector Product - No Transposition";
+        printTestInfo(test_description, ++test_number);
+
+        // Define matrix A (2x3) in column-major order
+        double A[6] = {
+            1.0, 2.0, // First column
+            3.0, 4.0, // Second column
+            5.0, 6.0  // Third column
+        };
+
+        // Define vectors X and Y
+        double X[3] = {1.0, 1.0, 1.0}; // Vector X (size 3)
+        double Y[2] = {0.0, 0.0};      // Vector Y (size 2)
+
+        // Define scalars alpha and beta
+        double alpha = 1.0;
+        double beta = 0.0;
+
+        // Perform matrix-vector multiplication Y = alpha * A * X + beta * Y
+        _dynorb_rgemv(false, 2, 3, alpha, A, X, beta, Y);
+
+        // Print the result
+        printf("Y = [%f, %f]\n", Y[0], Y[1]);
+    }
+
+    /* TEST 7: */
+    {
+        const char *test_description = "Test Cblas-like Matrix Vector Product - Transposition";
+        printTestInfo(test_description, ++test_number);
+
+        // Define matrix A (3x2) in column-major order
+        double A[6] = {
+            1.5, 4.7, // First column
+            2.9, 5.6, // Second column
+            3.3, 6.2  // Third column
+        };
+
+        // Define vectors X and Y
+        double X[3] = {1.5, -6.6, 1.1}; // Vector X (size 3)
+        double Y[2] = {0.0, 0.0};       // Vector Y (size 2)
+
+        // Define scalars alpha and beta
+        double alpha = 1.0;
+        double beta = 0.0;
+
+        // Perform matrix-vector multiplication Y = alpha * A^T * X + beta * Y
+        _dynorb_rgemv(true, 3, 2, alpha, A, X, beta, Y);
+
+        // Print the result
+        printf("Y = [%f, %f]\n", Y[0], Y[1]);
+    }
 
     /* TEST N: Test Complted: */
 
