@@ -47,7 +47,7 @@ typedef struct
     const real t1;               // Final time
     const int sys_size;          // Size of the system (number of equations)
     real *tt;                    // Time Steps of the Solution
-    real *yyt;                   // Solution Array
+    real *YY_t;                  // Solution Array
 } _dynorb_odeSys;
 
 /* UTILITY FUNCTIONS: */
@@ -300,7 +300,7 @@ void _dynorb_rk1(_dynorb_odeSys *sys, const real h, const int n_steps)
     real t0 = sys->t0;                              // Initial time
     real t1 = sys->t1;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
-    real *yyt = sys->yyt;                           // Solution Array
+    real *YY_t = sys->YY_t;                         // Solution Array
 
     //  RK1 (Euler)
     int n_stages = 1;
@@ -340,11 +340,11 @@ void _dynorb_rk1(_dynorb_odeSys *sys, const real h, const int n_steps)
         // Store results:
         if (t > t1)
         {
-            memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+            memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
             tt[step] = t;
             printf("_dynorb_rk1 : Breaking From Loop<t = %f [s]>", t);
         }
-        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         tt[step] = t;
     }
 
@@ -365,7 +365,7 @@ void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps)
     real t0 = sys->t0;                              // Initial time
     real t1 = sys->t1;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
-    real *yyt = sys->yyt;                           // Solution Array
+    real *YY_t = sys->YY_t;                         // Solution Array
 
     //  RK2 (Heun)
     int n_stages = 2;
@@ -422,12 +422,12 @@ void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps)
         // Store results:
         if (t > t1)
         {
-            memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+            memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
             tt[step] = t;
             printf("_dynorb_rk2 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         tt[step] = t;
     }
 
@@ -449,7 +449,7 @@ void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps)
     real t0 = sys->t0;                              // Initial time
     real t1 = sys->t1;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
-    real *yyt = sys->yyt;                           // Solution Array
+    real *YY_t = sys->YY_t;                         // Solution Array
 
     //  RK3
     int n_stages = 3;
@@ -513,12 +513,12 @@ void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps)
         // Store results:
         if (t > t1)
         {
-            memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+            memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
             tt[step] = t;
             printf("_dynorb_rk3 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         tt[step] = t;
     }
 
@@ -540,7 +540,7 @@ void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps)
     real t0 = sys->t0;                              // Initial time
     real t1 = sys->t1;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
-    real *yyt = sys->yyt;                           // Solution Array
+    real *YY_t = sys->YY_t;                         // Solution Array
 
     //  RK4 (Runge-Kutta)
     int n_stages = 4;
@@ -612,12 +612,12 @@ void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps)
         // Store results:
         if (t > t1)
         {
-            memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+            memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
             tt[step] = t;
             printf("_dynorb_rk4 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         tt[step] = t;
     }
 
@@ -639,7 +639,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps)
     real t0 = sys->t0;                              // Initial time
     real t1 = sys->t1;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
-    real *yyt = sys->yyt;                           // Solution Array
+    real *YY_t = sys->YY_t;                         // Solution Array
 
     // Tolerance and _dynorb_Max number of steps:
     const real tol = 1.e-6;
@@ -657,7 +657,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps)
 
     // Copy First State and Instant in Output:
     tt[0] = t0;
-    memcpy(yyt, yy0, sys_size * sizeof(real));
+    memcpy(YY_t, yy0, sys_size * sizeof(real));
 
     // Allocate Memory for state and derivatives at interval boundaries:
     real *yy1_ = (real *)malloc(sys_size * sizeof(real));
@@ -737,19 +737,19 @@ void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps)
         if (step >= n_steps)
          {
              tt = (real *)realloc(tt, (n_steps + 1) * sizeof(real));
-             yyt = (real *)realloc(yyt, (n_steps + 1) * sys_size * sizeof(real));
+             YY_t = (real *)realloc(YY_t, (n_steps + 1) * sys_size * sizeof(real));
              tt[step] = t;
-             memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+             memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
              printf("Number of estimated steps (n_steps = %d) surpassed. Using 'realloc'.\n", n_steps);
          }
          else
          {
              tt[step] = t;
-             memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+             memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
          }
         */
         tt[step] = t;
-        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         step++;
     }
 

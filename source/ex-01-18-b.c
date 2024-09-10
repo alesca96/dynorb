@@ -93,7 +93,7 @@ int main(void)
         .t1 = t1,
         .yy0 = yy0,
         .tt = NULL,
-        .yyt = NULL};
+        .YY_t = NULL};
 
     // Step 3: Set up Integration:
     real h = 0.5; // Step size
@@ -101,8 +101,8 @@ int main(void)
     printf("Time Step Size: <h = %f [s]>\n", h);
     printf("Number Steps: <num_steps = %d>\n", num_steps);
     // Memory Allocation For Solution:
-    SimpHarmOscSys.tt = (real *)malloc(num_steps * sizeof(real));             // Allocate memory for time array:
-    SimpHarmOscSys.yyt = (real *)malloc(num_steps * sys_size * sizeof(real)); // Allocate memory for solution array:
+    SimpHarmOscSys.tt = (real *)malloc(num_steps * sizeof(real));              // Allocate memory for time array:
+    SimpHarmOscSys.YY_t = (real *)malloc(num_steps * sys_size * sizeof(real)); // Allocate memory for solution array:
 
     // Step 4: Perform Integration using custom RK method:
     _dynorb_rk4(&SimpHarmOscSys, h, num_steps);
@@ -121,12 +121,12 @@ int main(void)
         // Analytical Solution
         real x_a = 0.0;
         SimpHarmOscAnalyticalSolution(SimpHarmOscSys.tt[i], yy0, &x_a, &p);
-        fprintf(outfile, "%.10f %.10f %.10f %.10f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.yyt[i * sys_size], SimpHarmOscSys.yyt[i * sys_size + 1], x_a);
+        fprintf(outfile, "%.10f %.10f %.10f %.10f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.YY_t[i * sys_size], SimpHarmOscSys.YY_t[i * sys_size + 1], x_a);
     }
 
     // Step 7: Free Memory and Close Data File:
     fclose(outfile);
-    free(SimpHarmOscSys.yyt);
+    free(SimpHarmOscSys.YY_t);
     free(SimpHarmOscSys.tt);
 
     /* ==========================================================
