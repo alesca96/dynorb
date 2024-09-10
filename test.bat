@@ -16,13 +16,14 @@ if exist .\bin\test\test.exe (
     del .\bin\test\test.exe
 )
 
+@echo on
 :: Compile the source file to create test.exe
 gcc ^
 -Wall ^
 -Wextra ^
 -Werror ^
 -pedantic ^
--std=c99 ^
+-std=c18 ^
 -O0 ^
 -g ^
 -I .\include ^

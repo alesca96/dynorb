@@ -24,7 +24,7 @@ gcc ^
 -Wextra ^
 -Werror ^
 -pedantic ^
--std=c99 ^
+-std=c18 ^
 -D_GNU_SOURCE ^
 -I ".\include" ^
 -I "C:\cygwin64\usr\include" ^

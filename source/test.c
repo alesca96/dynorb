@@ -1,32 +1,27 @@
 #define DYNORB_IMPLEMENTATION
-#define USE_DOUBLE
+#define USE_FLOAT // USE_real
 #define USE_CBLAS
 #include "..\include\dynorb.h" // Include your custom RK header file
 
-// Function to print test information
+/* Function to print test information: */
 void printTestInfo(const char *description, int test_idx)
 {
     printf("\n--------------------------------------------\n");
-    printf("Test %d: %s\n", test_idx, description);
+    printf("\033[1m\033[31mTest %d: %s\033[0m\n", test_idx, description);
 }
+
+/* Unit Test for all functions: */
 
 int main(void)
 {
     printf("\n");
-    printf("==============================================\n");
-    printf("TEST SCRIPT begins:\n");
+    printf("\033[1m\033[34m==============================================\033[0m\n");
+    printf("\033[1m\033[34mTEST SCRIPT begins:\033[0m\n");
 
     // Test Index:
     int test_number = 0;
 
-    /* TEST 0: */
-    {
-        const char *test_description = "Test Cblas-like flags";
-        printTestInfo(test_description, test_number);
-        printf("CblasColMajor = %d | CblasNoTrans = %d\n", CblasColMajor, CblasNoTrans);
-    }
-
-    /* TEST 1: */
+    /* TEST: */
     {
         const char *test_description = "Test macro EL";
         printTestInfo(test_description, ++test_number);
@@ -41,7 +36,7 @@ int main(void)
         printf("Element at (1, 2): %.3f\n", EL(matrix, 3, 2, 2, 1)); // 6
     }
 
-    /* TEST 2: */
+    /* TEST: */
     {
         const char *test_description = "Test Printing Matrix";
         printTestInfo(test_description, ++test_number);
@@ -52,35 +47,43 @@ int main(void)
                            9.0, 10.0, 11.0, 12.0};
 
         // Use the macro to access elements
-        matprint(matrix, 4, 3);
-
-        matprint(matrix, 3, 4);
+        _dynorb_rmprint(matrix, 4, 3);
     }
 
-    /* TEST 3: */
+    /* TEST: */
     {
         const char *test_description = "Test Copying Matrix";
         printTestInfo(test_description, ++test_number);
 
-        // Define a 2x3 matrix as a 1D array
-        real src_M[12] = {1.0, 2.0, 3.0, 4.0, // transpose representation
-                          5.0, 6.0, 7.0, 8.0,
-                          9.0, 10.0, 11.0, 12.0};
-        real dst_M[12] = {0.0};
+        int src_rows = 4, src_cols = 4;
+        real src_M[16] = {
+            1, 5, 9, 13,  // Column 1
+            2, 6, 10, 14, // Column 2
+            3, 7, 11, 15, // Column 3
+            4, 8, 12, 16  // Column 4
+        };
+
+        int dst_rows = 4, dst_cols = 4;
+        real dst_M[16] = {0}; // Destination initialized to all zeros
+
+        // tCopy matrix starting at position (0,0) in the destination matrix
+        _dynorb_rmcopy(src_M, src_rows, src_cols,
+                       0, 0, 4, 4, // Submatrix starts at (1,1) and is 2x2
+                       dst_M, dst_rows, dst_cols,
+                       0, 0); // Copy it to (0,0) in the destination matrix
 
         // Use the macro to access elements
-        int nrows = 4;
-        int ncols = 3;
         printf("Source: \n");
-        matprint(src_M, nrows, ncols);
+        _dynorb_rmprint(src_M, src_rows, src_cols);
         printf("Destination: \n");
-        matprint(dst_M, nrows, ncols);
+        _dynorb_rmprint(dst_M, dst_rows, dst_cols);
+
         printf("Element by element: \n");
-        for (int i = 0; i < nrows; ++i)
+        for (int i = 0; i < src_rows; ++i)
         {
-            for (int j = 0; j < ncols; ++j)
+            for (int j = 0; j < src_cols; ++j)
             {
-                if (fabs(EL(src_M, nrows, ncols, i, j) - EL(src_M, nrows, ncols, i, j)) < 1.e-12)
+                if (fabs(EL(src_M, src_rows, src_cols, i, j) - EL(dst_M, src_rows, src_cols, i, j)) < 1.e-12)
                 {
                     printf("Elements at position (%d, %d) are equal.\n", i, j);
                 }
@@ -92,7 +95,7 @@ int main(void)
         }
     }
 
-    /* TEST 4: */
+    /* TEST: */
     {
         const char *test_description = "Test Cblas-like Vector Sum";
         printTestInfo(test_description, ++test_number);
@@ -109,31 +112,31 @@ int main(void)
 
         // Print the result
         printf("Resulting COLUMN vector C = alpha* A + B:\n");
-        matprint(C, 5, 1);
+        _dynorb_rmprint(C, 5, 1);
         printf("\n");
         printf("Resulting ROW vector C = alpha* A + B:\n");
-        matprint(C, 1, 5);
+        _dynorb_rmprint(C, 1, 5);
     }
 
-    /* TEST 6: */
+    /* TEST: */
     {
         const char *test_description = "Test Cblas-like Matrix Vector Product - No Transposition";
         printTestInfo(test_description, ++test_number);
 
         // Define matrix A (2x3) in column-major order
-        double A[6] = {
+        real A[6] = {
             1.0, 2.0, // First column
             3.0, 4.0, // Second column
             5.0, 6.0  // Third column
         };
 
         // Define vectors X and Y
-        double X[3] = {1.0, 1.0, 1.0}; // Vector X (size 3)
-        double Y[2] = {0.0, 0.0};      // Vector Y (size 2)
+        real X[3] = {1.0, 1.0, 1.0}; // Vector X (size 3)
+        real Y[2] = {0.0, 0.0};      // Vector Y (size 2)
 
         // Define scalars alpha and beta
-        double alpha = 1.0;
-        double beta = 0.0;
+        real alpha = 1.0;
+        real beta = 0.0;
 
         // Perform matrix-vector multiplication Y = alpha * A * X + beta * Y
         _dynorb_rgemv(false, 2, 3, alpha, A, X, beta, Y);
@@ -142,25 +145,25 @@ int main(void)
         printf("Y = [%f, %f]\n", Y[0], Y[1]);
     }
 
-    /* TEST 7: */
+    /* TEST: */
     {
         const char *test_description = "Test Cblas-like Matrix Vector Product - Transposition";
         printTestInfo(test_description, ++test_number);
 
         // Define matrix A (3x2) in column-major order
-        double A[6] = {
+        real A[6] = {
             1.5, 4.7, // First column
             2.9, 5.6, // Second column
             3.3, 6.2  // Third column
         };
 
         // Define vectors X and Y
-        double X[3] = {1.5, -6.6, 1.1}; // Vector X (size 3)
-        double Y[2] = {0.0, 0.0};       // Vector Y (size 2)
+        real X[3] = {1.5, -6.6, 1.1}; // Vector X (size 3)
+        real Y[2] = {0.0, 0.0};       // Vector Y (size 2)
 
         // Define scalars alpha and beta
-        double alpha = 1.0;
-        double beta = 0.0;
+        real alpha = 1.0;
+        real beta = 0.0;
 
         // Perform matrix-vector multiplication Y = alpha * A^T * X + beta * Y
         _dynorb_rgemv(true, 3, 2, alpha, A, X, beta, Y);
@@ -169,12 +172,12 @@ int main(void)
         printf("Y = [%f, %f]\n", Y[0], Y[1]);
     }
 
-    /* TEST N: Test Complted: */
+    /* TEST: Test Complted: */
 
     printf("\n--------------------------------------------\n");
-    printf("TEST SCRIPT ends:\n");
-    printf("ALL TEST COMPLETED without crashes \n");
-    printf("==============================================\n");
+    printf("\033[1m\033[32mTEST SCRIPT ends:\n");
+    printf("ALL TEST COMPLETED without crashes.\n");
+    printf("==============================================\033[0m\n");
     printf("\n");
 
     return 0;

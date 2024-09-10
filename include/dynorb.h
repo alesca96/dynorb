@@ -34,10 +34,10 @@ const bool real_is_double = 0;
 #endif
 
 /* MACROS: */
-#define EL(M, nrows, ncols, i, j) M[(j * (nrows)) + i]
+#define EL(M, m, n, i, j) M[(j * (m)) + i]
 
 /* ODE FUNCTION AND SYSTEM: */
-typedef void(_dynorb_odeFun)(const real in_t, const real *in_yy, const void *in_params, real *out_dyydt);
+typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *params, real *dyydt);
 typedef struct
 {
     _dynorb_odeFun *odeFunction; // Pointer to the ODE function
@@ -51,17 +51,18 @@ typedef struct
 } _dynorb_odeSys;
 
 /* UTILITY FUNCTIONS: */
-int min(int a, int b);
-int max(int a, int b);
-real rmin(real a, real b);
-real rmax(real a, real b);
-void matcpy(real *dst_M, const real *src_M, const int start_idx_row, const int start_idx_col, const int end_idx_row, const int end_idx_col, const int src_ncols, const int dst_ncols);
-void matprint(const real *in_M, const int nrows, const int ncols);
+int _dynorb_min(int a, int b);
+int _dynorb_max(int a, int b);
+real _dynorb_rmin(real a, real b);
+real _dynorb_rmax(real a, real b);
+void _dynorb_rmprint(const real *A, const int m, const int n);
 
 /* Basic Linear Algebra Subroutines: */
 // Thin wrappers of CBLAS if USE_CBLAS. Else custum implementation.
-void _dynorb_raxpy(const int N, const real alpha, const real *X, real *Y);
-void _dynorb_rgemv(const bool TransposeA, const int M, const int N, const real alpha, const real *A, const real *X, const real beta, real *Y);
+void _dynorb_raxpy(const int n, const real alpha, const real *xx, real *yy);
+void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real alpha, const real *A, const real *xx, const real beta, real *yy);
+void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy);
+void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const int src_start_i, const int src_start_j, const int cpy_m, const int cpy_n, real *dst_B, const int dst_m, const int dst_n, const int dst_start_i, const int dst_start_j);
 
 /* CORE FUNCTIONS: */
 
@@ -71,16 +72,16 @@ void _dynorb_rgemv(const bool TransposeA, const int M, const int N, const real a
  *
  * This function integrates an ODE system using a specified order of the Euler (Runge-Kutta order 1) method.
  *
- * @param[in] in_sys Pointer to the structure defining the ODE system.
- * @param[in] in_h Time step size for the integration.
- * @param[in] in_n_steps Number of steps for the integration.
+ * @param[inout] sys Pointer to the structure defining the ODE system.
+ * @param[in] h Time step size for the integration.
+ * @param[in] n_steps Number of steps for the integration.
  *
  * This function uses a column-major convention.
  *
  * @return Void.
  *
  */
-void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
+void _dynorb_rk1(_dynorb_odeSys *sys, const real h, const int n_steps);
 
 /**
  *
@@ -88,16 +89,16 @@ void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
  *
  * This function integrates an ODE system using a specified order of the Heun (Runge-Kutta order 2) method.
  *
- * @param[in] in_sys Pointer to the structure defining the ODE system.
- * @param[in] in_h Time step size for the integration.
- * @param[in] in_n_steps Number of steps for the integration.
+ * @param[inout] sys Pointer to the structure defining the ODE system.
+ * @param[in] h Time step size for the integration.
+ * @param[in] n_steps Number of steps for the integration.
  *
  * This function uses a column-major convention.
  *
  * @return Void.
  *
  */
-void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
+void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps);
 
 /**
  *
@@ -105,16 +106,16 @@ void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
  *
  * This function integrates an ODE system using a specified order of the Runge-Kutta order 3 method.
  *
- * @param[in] in_sys Pointer to the structure defining the ODE system.
- * @param[in] in_h Time step size for the integration.
- * @param[in] in_n_steps Number of steps for the integration.
+ * @param[inout] sys Pointer to the structure defining the ODE system.
+ * @param[in] h Time step size for the integration.
+ * @param[in] n_steps Number of steps for the integration.
  *
  * This function uses a column-major convention.
  *
  * @return Void.
  *
  */
-void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
+void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps);
 
 /**
  *
@@ -122,16 +123,16 @@ void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
  *
  * This function integrates an ODE system using a specified order of the Runge-Kutta order 4 method.
  *
- * @param[in] in_sys Pointer to the structure defining the ODE system.
- * @param[in] in_h Time step size for the integration.
- * @param[in] in_n_steps Number of steps for the integration.
+ * @param[inout] sys Pointer to the structure defining the ODE system.
+ * @param[in] h Time step size for the integration.
+ * @param[in] n_steps Number of steps for the integration.
  *
  * This function uses a column-major convention.
  *
  * @return Void.
  *
  */
-void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
+void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps);
 
 /**
  *
@@ -139,16 +140,16 @@ void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps);
  *
  * This function integrates an ODE system using Heun Predictor-Corrector method.
  *
- * @param[in] in_sys Pointer to the structure defining the ODE system.
- * @param[in] in_h Time step size for the integration.
- * @param[in] in_n_steps Number of steps for the integration.
+ * @param[inout] sys Pointer to the structure defining the ODE system.
+ * @param[in] h Time step size for the integration.
+ * @param[in] n_steps Number of steps for the integration.
  *
  * This function uses a column-major convention.
  *
  * @return Void.
  *
  */
-void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps);
+void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps);
 
 #endif // DYNORB_H_
 
@@ -162,42 +163,78 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps);
 
 #ifdef USE_CBLAS /* CBLAS wrappers: */
 
-void _dynorb_raxpy(const int N, const real alpha, const real *X, real *Y)
+void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy)
+{ // Vector copy: src_x->dst_y
+    if (real_is_double)
+    {
+        cblas_dcopy(n, (const double *)src_xx, 1, (double *)dst_yy, 1);
+    }
+    else // Real is Float
+    {
+        cblas_scopy(n, (const float *)src_xx, 1, (float *)dst_yy, 1);
+    }
+}
+
+void _dynorb_rmcopy(const real *src_A, const int src_M, const int src_N, const int src_StartRow, const int src_StartCol, const int cpyM, const int cpyN, real *dst_B, const int dst_M, const int dst_N, const int dst_StartRow, const int dst_StartCol)
+{ // Matrix copy: A->B (also subportions), assumes CblasColMajor
+    if (src_StartRow + cpyM > src_M || src_StartCol + cpyN > src_N)
+    {
+        printf("Error: Source submatrix dimensions exceed bounds of source matrix.\n");
+        return;
+    }
+    if (dst_StartRow + cpyM > dst_M || dst_StartCol + cpyN > dst_N)
+    {
+        printf("Error: Destination submatrix dimensions exceed bounds of destination matrix.\n");
+        return;
+    }
+    // Loop through each column in the source submatrix and copy it to the destination submatrix
+    for (int col = 0; col < cpyN; ++col)
+    {
+        // Compute the offset to the first element of the column in both the source and destination
+        const real *src_col = src_A + (src_StartCol + col) * src_M + src_StartRow;
+        real *dst_col = dst_B + (dst_StartCol + col) * dst_M + dst_StartRow;
+
+        // Copy the column (which is a vector) from source to destination
+        _dynorb_rvcopy(cpyM, src_col, dst_col);
+    }
+}
+
+void _dynorb_raxpy(const int n, const real alpha, const real *xx, real *yy)
 { // Vector Sum: yy = alpha*xx + yy
 
     if (real_is_double)
     {
-        cblas_daxpy(N, (const double)alpha, (const double *)X, 1, (double *)Y, 1);
+        cblas_daxpy(n, (const double)alpha, (const double *)xx, 1, (double *)yy, 1);
     }
     else // Real is Float
     {
-        cblas_saxpy(N, (const float)alpha, (const float *)X, 1, (float *)Y, 1);
+        cblas_saxpy(n, (const float)alpha, (const float *)xx, 1, (float *)yy, 1);
     }
 }
 
-void _dynorb_rgemv(const bool TransposeA, const int M, const int N, const real alpha, const real *A, const real *X, const real beta, real *Y)
-{ // Matrix Vector Multiplication: yy = alpha*(A*xx) + beta*y
+void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real alpha, const real *A, const real *xx, const real beta, real *yy)
+{ // matrix Vector Multiplication: yy = alpha*(A*xx) + beta*yy
 
     if (real_is_double)
     {
         if (TransposeA)
         {
-            cblas_dgemv(CblasColMajor, CblasTrans, M, N, (const double)alpha, (const double *)A, M, (const double *)X, 1, (const double)beta, (double *)Y, 1);
+            cblas_dgemv(CblasColMajor, CblasTrans, m, n, (const double)alpha, (const double *)A, m, (const double *)xx, 1, (const double)beta, (double *)yy, 1);
         }
         else // Not Transposed
         {
-            cblas_dgemv(CblasColMajor, CblasNoTrans, M, N, (const double)alpha, (const double *)A, M, (const double *)X, 1, (const double)beta, (double *)Y, 1);
+            cblas_dgemv(CblasColMajor, CblasNoTrans, m, n, (const double)alpha, (const double *)A, m, (const double *)xx, 1, (const double)beta, (double *)yy, 1);
         }
     }
     else // Real is Float
     {
         if (TransposeA)
         {
-            cblas_sgemv(CblasColMajor, CblasTrans, M, N, (const float)alpha, (const float *)A, M, (const float *)X, 1, (const float)beta, (float *)Y, 1);
+            cblas_sgemv(CblasColMajor, CblasTrans, m, n, (const float)alpha, (const float *)A, m, (const float *)xx, 1, (const float)beta, (float *)yy, 1);
         }
         else // Not Transposed
         {
-            cblas_sgemv(CblasColMajor, CblasNoTrans, M, N, (const float)alpha, (const float *)A, M, (const float *)X, 1, (const float)beta, (float *)Y, 1);
+            cblas_sgemv(CblasColMajor, CblasNoTrans, m, n, (const float)alpha, (const float *)A, m, (const float *)xx, 1, (const float)beta, (float *)yy, 1);
         }
     }
 }
@@ -213,54 +250,36 @@ void IMPLEMENT_ALTERNATIVE_TO_CBLAS_FUNCTIONS(void)
 #endif
 
 /* Utility functions: */
-int min(int a, int b)
+int _dynorb_min(int a, int b)
 {
     return (a < b) ? a : b;
 }
 
-int max(int a, int b)
+int _dynorb_max(int a, int b)
 {
     return (a > b) ? a : b;
 }
 
-real rmin(real a, real b)
+real _dynorb_rmin(real a, real b)
 {
     return (a < b) ? a : b;
 }
 
-real rmax(real a, real b)
+real _dynorb_rmax(real a, real b)
 {
     return (a > b) ? a : b;
 }
 
-void matcpy(real *dst_M, const real *src_M, const int start_idx_row, const int start_idx_col, const int end_idx_row, const int end_idx_col, const int src_ncols, const int dst_ncols)
-{
-    // TODO: Make more Powrful by allowing copying in a portion of the dest.
-    for (int i = start_idx_row; i <= end_idx_row; ++i)
-    {
-        for (int j = start_idx_col; j <= end_idx_col; ++j)
-        {
-            // Ensure the destination and source have the same number of columns for the operation
-            if (i < 0 || j < 0 || i >= (end_idx_row + 1) || j >= (end_idx_col + 1))
-            {
-                fprintf(stderr, "Index out of bounds\n");
-                return;
-            }
-            EL(dst_M, dst_ncols, end_idx_row - start_idx_row + 1, i - start_idx_row, j - start_idx_col) = EL(src_M, src_ncols, end_idx_row - start_idx_row + 1, i, j);
-        }
-    }
-}
-
-void matprint(const real *in_M, const int nrows, const int ncols)
+void _dynorb_rmprint(const real *A, const int m, const int n)
 {
     printf("[\n");
-    for (int i = 0; i < nrows; ++i)
+    for (int i = 0; i < m; ++i)
     {
         printf("    ");
-        for (int j = 0; j < ncols; ++j)
+        for (int j = 0; j < n; ++j)
         {
-            printf("%.4f", EL(in_M, nrows, ncols, i, j));
-            if (j < ncols - 1)
+            printf("%.4f", EL(A, m, n, i, j));
+            if (j < n - 1)
             {
                 printf(", ");
             }
@@ -271,17 +290,17 @@ void matprint(const real *in_M, const int nrows, const int ncols)
 }
 
 /* Core Library Functions: */
-void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
+void _dynorb_rk1(_dynorb_odeSys *sys, const real h, const int n_steps)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
-    _dynorb_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = in_sys->params;               // Pointer to params
-    const int sys_size = in_sys->sys_size;             // Size of System
-    const real *yy0 = in_sys->yy0;                     // Pointer to Initial Conditions
-    real t0 = in_sys->t0;                              // Initial time
-    real t1 = in_sys->t1;                              // Final time
-    real *out_tt = in_sys->tt;                         // Time steps of solution
-    real *out_yyt = in_sys->yyt;                       // Solution Array
+    _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
+    const void *params = sys->params;               // Pointer to params
+    const int sys_size = sys->sys_size;             // Size of System
+    const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
+    real t0 = sys->t0;                              // Initial time
+    real t1 = sys->t1;                              // Final time
+    real *tt = sys->tt;                             // Time steps of solution
+    real *yyt = sys->yyt;                           // Solution Array
 
     //  RK1 (Euler)
     int n_stages = 1;
@@ -300,10 +319,10 @@ void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     real t = t0;
 
     // Numerical Integration:
-    for (int step = 0; step < in_n_steps; ++step)
+    for (int step = 0; step < n_steps; ++step)
     {
         // Evaluate Time Derivatives in [t, t+h]
-        real t_inner = t + a * in_h;
+        real t_inner = t + a * h;
         odeFunction(t_inner, yy, params, ff);
 
         // Update the state:
@@ -311,22 +330,22 @@ void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
         {
             for (int i = 0; i < n_stages; ++i)
             {
-                yy[k] += in_h * c * ff[k];
+                yy[k] += h * c * ff[k];
             }
         }
 
         // Update Integration Time:
-        t += in_h;
+        t += h;
 
         // Store results:
         if (t > t1)
         {
-            memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-            out_tt[step] = t;
+            memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+            tt[step] = t;
             printf("_dynorb_rk1 : Breaking From Loop<t = %f [s]>", t);
         }
-        memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-        out_tt[step] = t;
+        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+        tt[step] = t;
     }
 
     // Free Memory:
@@ -336,17 +355,17 @@ void _dynorb_rk1(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     // printf("_dynorb_rk1: Done Freeing Memory:\n");
 }
 
-void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
+void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
-    _dynorb_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = in_sys->params;               // Pointer to params
-    const int sys_size = in_sys->sys_size;             // Size of System
-    const real *yy0 = in_sys->yy0;                     // Pointer to Initial Conditions
-    real t0 = in_sys->t0;                              // Initial time
-    real t1 = in_sys->t1;                              // Final time
-    real *out_tt = in_sys->tt;                         // Time steps of solution
-    real *out_yyt = in_sys->yyt;                       // Solution Array
+    _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
+    const void *params = sys->params;               // Pointer to params
+    const int sys_size = sys->sys_size;             // Size of System
+    const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
+    real t0 = sys->t0;                              // Initial time
+    real t1 = sys->t1;                              // Final time
+    real *tt = sys->tt;                             // Time steps of solution
+    real *yyt = sys->yyt;                           // Solution Array
 
     //  RK2 (Heun)
     int n_stages = 2;
@@ -371,18 +390,18 @@ void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     real t = t0;
 
     // Numerical Integration:
-    for (int step = 0; step < in_n_steps; ++step)
+    for (int step = 0; step < n_steps; ++step)
     {
         // Evaluate Time Derivatives at 'n_stages' points in [t, t+h]
         for (int i = 0; i < n_stages; ++i)
         {
-            real t_inner = t + a[i] * in_h;
+            real t_inner = t + a[i] * h;
             memcpy(yy_inner, yy, sys_size * sizeof(real));
             for (int j = 0; j < i; ++j)
             {
                 for (int k = 0; k < sys_size; ++k)
                 {
-                    yy_inner[k] += in_h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
+                    yy_inner[k] += h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
                 }
             }
             odeFunction(t_inner, yy_inner, params, &ff[i * sys_size]);
@@ -393,23 +412,23 @@ void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
         {
             for (int i = 0; i < n_stages; ++i)
             {
-                yy[k] += in_h * c[i] * ff[i * sys_size + k];
+                yy[k] += h * c[i] * ff[i * sys_size + k];
             }
         }
 
         // Update Integration Time:
-        t += in_h;
+        t += h;
 
         // Store results:
         if (t > t1)
         {
-            memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-            out_tt[step] = t;
+            memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+            tt[step] = t;
             printf("_dynorb_rk2 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-        memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-        out_tt[step] = t;
+        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+        tt[step] = t;
     }
 
     // Free Memory:
@@ -420,17 +439,17 @@ void _dynorb_rk2(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     // printf("_dynorb_rk2: Done Freeing Memory:\n");
 }
 
-void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
+void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
-    _dynorb_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = in_sys->params;               // Pointer to params
-    const int sys_size = in_sys->sys_size;             // Size of System
-    const real *yy0 = in_sys->yy0;                     // Pointer to Initial Conditions
-    real t0 = in_sys->t0;                              // Initial time
-    real t1 = in_sys->t1;                              // Final time
-    real *out_tt = in_sys->tt;                         // Time steps of solution
-    real *out_yyt = in_sys->yyt;                       // Solution Array
+    _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
+    const void *params = sys->params;               // Pointer to params
+    const int sys_size = sys->sys_size;             // Size of System
+    const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
+    real t0 = sys->t0;                              // Initial time
+    real t1 = sys->t1;                              // Final time
+    real *tt = sys->tt;                             // Time steps of solution
+    real *yyt = sys->yyt;                           // Solution Array
 
     //  RK3
     int n_stages = 3;
@@ -462,18 +481,18 @@ void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     real t = t0;
 
     // Numerical Integration:
-    for (int step = 0; step < in_n_steps; ++step)
+    for (int step = 0; step < n_steps; ++step)
     {
         // Evaluate Time Derivatives at 'n_stages' points in [t, t+h]
         for (int i = 0; i < n_stages; ++i)
         {
-            real t_inner = t + a[i] * in_h;
+            real t_inner = t + a[i] * h;
             memcpy(yy_inner, yy, sys_size * sizeof(real));
             for (int j = 0; j < i; ++j)
             {
                 for (int k = 0; k < sys_size; ++k)
                 {
-                    yy_inner[k] += in_h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
+                    yy_inner[k] += h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
                 }
             }
             odeFunction(t_inner, yy_inner, params, &ff[i * sys_size]);
@@ -484,23 +503,23 @@ void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
         {
             for (int i = 0; i < n_stages; ++i)
             {
-                yy[k] += in_h * c[i] * ff[i * sys_size + k];
+                yy[k] += h * c[i] * ff[i * sys_size + k];
             }
         }
 
         // Update Integration Time:
-        t += in_h;
+        t += h;
 
         // Store results:
         if (t > t1)
         {
-            memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-            out_tt[step] = t;
+            memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+            tt[step] = t;
             printf("_dynorb_rk3 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-        memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-        out_tt[step] = t;
+        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+        tt[step] = t;
     }
 
     // Free Memory:
@@ -511,17 +530,17 @@ void _dynorb_rk3(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     // printf("_dynorb_rk3: Done Freeing Memory:\n");
 }
 
-void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
+void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
-    _dynorb_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = in_sys->params;               // Pointer to params
-    const int sys_size = in_sys->sys_size;             // Size of System
-    const real *yy0 = in_sys->yy0;                     // Pointer to Initial Conditions
-    real t0 = in_sys->t0;                              // Initial time
-    real t1 = in_sys->t1;                              // Final time
-    real *out_tt = in_sys->tt;                         // Time steps of solution
-    real *out_yyt = in_sys->yyt;                       // Solution Array
+    _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
+    const void *params = sys->params;               // Pointer to params
+    const int sys_size = sys->sys_size;             // Size of System
+    const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
+    real t0 = sys->t0;                              // Initial time
+    real t1 = sys->t1;                              // Final time
+    real *tt = sys->tt;                             // Time steps of solution
+    real *yyt = sys->yyt;                           // Solution Array
 
     //  RK4 (Runge-Kutta)
     int n_stages = 4;
@@ -561,18 +580,18 @@ void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     real t = t0;
 
     // Numerical Integration:
-    for (int step = 0; step < in_n_steps; ++step)
+    for (int step = 0; step < n_steps; ++step)
     {
         // Evaluate Time Derivatives at 'n_stages' points in [t, t+h]
         for (int i = 0; i < n_stages; ++i)
         {
-            real t_inner = t + a[i] * in_h;
+            real t_inner = t + a[i] * h;
             memcpy(yy_inner, yy, sys_size * sizeof(real));
             for (int j = 0; j < i; ++j)
             {
                 for (int k = 0; k < sys_size; ++k)
                 {
-                    yy_inner[k] += in_h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
+                    yy_inner[k] += h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
                 }
             }
             odeFunction(t_inner, yy_inner, params, &ff[i * sys_size]);
@@ -583,23 +602,23 @@ void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
         {
             for (int i = 0; i < n_stages; ++i)
             {
-                yy[k] += in_h * c[i] * ff[i * sys_size + k];
+                yy[k] += h * c[i] * ff[i * sys_size + k];
             }
         }
 
         // Update Integration Time:
-        t += in_h;
+        t += h;
 
         // Store results:
         if (t > t1)
         {
-            memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-            out_tt[step] = t;
+            memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+            tt[step] = t;
             printf("_dynorb_rk4 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-        memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-        out_tt[step] = t;
+        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+        tt[step] = t;
     }
 
     // Free Memory:
@@ -610,19 +629,19 @@ void _dynorb_rk4(_dynorb_odeSys *in_sys, const real in_h, const int in_n_steps)
     // printf("_dynorb_rk4: Done Freeing Memory:\n");
 }
 
-void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
+void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps)
 {
     // Open up _dynorb_odeSys
-    _dynorb_odeFun *odeFunction = in_sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = in_sys->params;               // Pointer to params
-    const int sys_size = in_sys->sys_size;             // Size of System
-    const real *yy0 = in_sys->yy0;                     // Pointer to Initial Conditions
-    real t0 = in_sys->t0;                              // Initial time
-    real t1 = in_sys->t1;                              // Final time
-    real *out_tt = in_sys->tt;                         // Time steps of solution
-    real *out_yyt = in_sys->yyt;                       // Solution Array
+    _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
+    const void *params = sys->params;               // Pointer to params
+    const int sys_size = sys->sys_size;             // Size of System
+    const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
+    real t0 = sys->t0;                              // Initial time
+    real t1 = sys->t1;                              // Final time
+    real *tt = sys->tt;                             // Time steps of solution
+    real *yyt = sys->yyt;                           // Solution Array
 
-    // Tolerance and Max number of steps:
+    // Tolerance and _dynorb_Max number of steps:
     const real tol = 1.e-6;
     const int rmax_iter = 100;
 
@@ -637,8 +656,8 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
     memcpy(yy, yy0, sys_size * sizeof(real));
 
     // Copy First State and Instant in Output:
-    out_tt[0] = t0;
-    memcpy(out_yyt, yy0, sys_size * sizeof(real));
+    tt[0] = t0;
+    memcpy(yyt, yy0, sys_size * sizeof(real));
 
     // Allocate Memory for state and derivatives at interval boundaries:
     real *yy1_ = (real *)malloc(sys_size * sizeof(real));
@@ -650,10 +669,10 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
 
     // Main Loop
     int step = 1;
-    while (t < t1 && step < in_n_steps)
+    while (t < t1 && step < n_steps)
     {
         // Step Size:
-        in_h = rmin(in_h, t1 - t);
+        h = _dynorb_rmin(h, t1 - t);
 
         // Left Boundary of Interval:
         real t1_ = t;
@@ -663,11 +682,11 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
         // Compute yy2_
         for (int i = 0; i < sys_size; ++i)
         {
-            yy2_[i] = yy1_[i] + ff1_[i] * in_h;
+            yy2_[i] = yy1_[i] + ff1_[i] * h;
         }
 
         // Right Boundary of the Interval:
-        real t2_ = t1_ + in_h;
+        real t2_ = t1_ + h;
         real err = tol + 1;
         int iter = 0;
 
@@ -686,7 +705,7 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
             // Corrected value
             for (int i = 0; i < sys_size; i++)
             {
-                yy2_[i] = yy1_[i] + (in_h * ffavg_[i]);
+                yy2_[i] = yy1_[i] + (h * ffavg_[i]);
             }
 
             // Error calculation
@@ -712,25 +731,25 @@ void _dynorb_heun_(_dynorb_odeSys *in_sys, real in_h, const int in_n_steps)
         }
 
         // Update
-        t += in_h;
+        t += h;
         memcpy(yy, yy2_, sys_size * sizeof(real));
         /*
-        if (step >= in_n_steps)
+        if (step >= n_steps)
          {
-             out_tt = (real *)realloc(out_tt, (in_n_steps + 1) * sizeof(real));
-             out_yyt = (real *)realloc(out_yyt, (in_n_steps + 1) * sys_size * sizeof(real));
-             out_tt[step] = t;
-             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
-             printf("Number of estimated steps (in_n_steps = %d) surpassed. Using 'realloc'.\n", in_n_steps);
+             tt = (real *)realloc(tt, (n_steps + 1) * sizeof(real));
+             yyt = (real *)realloc(yyt, (n_steps + 1) * sys_size * sizeof(real));
+             tt[step] = t;
+             memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
+             printf("Number of estimated steps (n_steps = %d) surpassed. Using 'realloc'.\n", n_steps);
          }
          else
          {
-             out_tt[step] = t;
-             memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
+             tt[step] = t;
+             memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
          }
         */
-        out_tt[step] = t;
-        memcpy(&out_yyt[step * sys_size], yy, sys_size * sizeof(real));
+        tt[step] = t;
+        memcpy(&yyt[step * sys_size], yy, sys_size * sizeof(real));
         step++;
     }
 

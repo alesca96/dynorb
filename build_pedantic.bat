@@ -23,7 +23,7 @@ gcc ^
 -Wextra ^
 -Werror ^
 -pedantic ^
--std=c99 ^
+-std=c18 ^
 -O2 ^
 -D_GNU_SOURCE ^
 -I .\include ^
