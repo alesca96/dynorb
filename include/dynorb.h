@@ -259,29 +259,29 @@ real _dynorb_rnrm2(const int n, const real *xx)
 
 void _dynorb_rmcopy(const real *src_A, const int src_M, const int src_N,
                     const int src_StartRow, const int src_StartCol,
-                    const int cpyM, const int cpyN,
+                    const int cpy_M, const int cpy_N,
                     real *dst_B, const int dst_M, const int dst_N,
                     const int dst_StartRow, const int dst_StartCol)
 { // LEVEL 2: Matrix copy: A->B (also subportions), assumes CblasColMajor
-    if (src_StartRow + cpyM > src_M || src_StartCol + cpyN > src_N)
+    if (src_StartRow + cpy_M > src_M || src_StartCol + cpy_N > src_N)
     {
         printf("Error: Source submatrix dimensions exceed bounds of source matrix.\n");
         return;
     }
-    if (dst_StartRow + cpyM > dst_M || dst_StartCol + cpyN > dst_N)
+    if (dst_StartRow + cpy_M > dst_M || dst_StartCol + cpy_N > dst_N)
     {
         printf("Error: Destination submatrix dimensions exceed bounds of destination matrix.\n");
         return;
     }
     // Loop through each column in the source submatrix and copy it to the destination submatrix
-    for (int col = 0; col < cpyN; ++col)
+    for (int col = 0; col < cpy_N; ++col)
     {
         // Compute the offset to the first element of the column in both the source and destination
         const real *src_col = src_A + (src_StartCol + col) * src_M + src_StartRow;
         real *dst_col = dst_B + (dst_StartCol + col) * dst_M + dst_StartRow;
 
         // Copy the column (which is a vector) from source to destination
-        _dynorb_rvcopy(cpyM, src_col, dst_col);
+        _dynorb_rvcopy(cpy_M, src_col, dst_col);
     }
 }
 
