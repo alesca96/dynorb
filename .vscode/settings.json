@@ -7,6 +7,7 @@
         "cmath": "c",
         "dynorb_.h": "c",
         "assert.h": "c",
-        "cblas_mangling.h": "c"
+        "cblas_mangling.h": "c",
+        "dynorb.h": "c"
     }
 }

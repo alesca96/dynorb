@@ -3,8 +3,34 @@
  * **************************************************** */
 
 /* ASSUMPTIONS:
- * 1. Code uses COLUMN MAJOR convention (similar to CBLAS).
+ * 1. Code uses COLUMN MAJOR convention (see CBLAS).
  * 2. Strides other than 1 are not supported in this implementation.
+ * 3. Type 'real' can only be float (single precision) or double (double precision).
+ */
+
+/* TODO: Short/Medium Term
+ * 1. Implement Curtis Algorithms usinng wrappers of CBLAS and LAPACKE
+ * 2. Reduce (completly eliminate when possible) heap usage
+ * 3. Fullfill as much as possible NASA POWER OF TEN
+ */
+
+/* TODO: Long Term
+ * 1. Implement Custom subroutines to substitute CBLAS and LAPACKE
+ * 2. Completly eliminate heap usage (if impossible, remove the function from library)
+ * 3. Enforce NASA POWER OF TEN
+ */
+
+/* NASA POWER OF TEN RULES (http://web.eecs.umich.edu/~imarkov/10rules.pdf):
+ * 1. Avoid complex flow constructs, such as goto and recursion.
+ * 2. All loops must have fixed bounds. This prevents runaway code.
+ * 3. Avoid heap memory allocation.
+ * 4. Restrict functions to a single printed page.
+ * 5. Use a minimum of two runtime assertions per function.
+ * 6. Restrict the scope of data to the smallest possible.
+ * 7. Check the return value of all non-void functions, or cast to void to indicate the return value is useless.
+ * 8. Use the preprocessor sparingly.
+ * 9. Limit pointer use to a single dereference, and do not use function pointers.
+ * 10. Compile with all possible warnings active; all warnings should then be addressed before release of the software.
  */
 
 #ifndef DYNORB_H_
@@ -34,7 +60,7 @@ const bool real_is_double = 0;
 #endif
 
 /* MACROS: */
-#define EL(M, m, n, i, j) M[(j * (m)) + i]
+#define _dynorb_EL(M, m, n, i, j) M[(j * (m)) + i]
 
 /* ODE FUNCTION AND SYSTEM: */
 typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *params, real *dyydt);
@@ -59,6 +85,9 @@ void _dynorb_rmprint(const real *A, const int m, const int n);
 
 /* Basic Linear Algebra Subroutines: */
 // Thin wrappers of CBLAS if USE_CBLAS. Else custum implementation.
+real _dynorb_rdot(const int n, const real *xx, const real *yy);
+real _dynorb_rnrm2(const int n, const real *xx);
+void _dynorb_rscal(const int n, const real alpha, real *xx);
 void _dynorb_raxpy(const int n, const real alpha, const real *xx, real *yy);
 void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real alpha, const real *A, const real *xx, const real beta, real *yy);
 void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy);
@@ -155,7 +184,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps);
 
 /*
  * **************************************************** *
- * ************* DYNORN IMPLEMENTATION ************* *
+ * ************* DYNORNB IMPLEMENTATION ************* *
  * **************************************************** *
  */
 
@@ -164,7 +193,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps);
 #ifdef USE_CBLAS /* CBLAS wrappers: */
 
 void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy)
-{ // Vector copy: src_x->dst_y
+{ // LEVEL 1: Vector copy: src_x->dst_y
     if (real_is_double)
     {
         cblas_dcopy(n, (const double *)src_xx, 1, (double *)dst_yy, 1);
@@ -175,8 +204,65 @@ void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy)
     }
 }
 
-void _dynorb_rmcopy(const real *src_A, const int src_M, const int src_N, const int src_StartRow, const int src_StartCol, const int cpyM, const int cpyN, real *dst_B, const int dst_M, const int dst_N, const int dst_StartRow, const int dst_StartCol)
-{ // Matrix copy: A->B (also subportions), assumes CblasColMajor
+void _dynorb_rscal(const int n, const real alpha, real *xx)
+{ // LEVEL 1: Scale a vectory by constant: xx = alpha*xx
+    if (real_is_double)
+    {
+        cblas_dscal(n, (const double)alpha, (double *)xx, 1);
+    }
+    else // Real is Float
+    {
+        cblas_sscal(n, (const float)alpha, (float *)xx, 1);
+    }
+}
+
+void _dynorb_raxpy(const int n, const real alpha, const real *xx, real *yy)
+{ // LEVEL 1: Vector Sum: yy = alpha*xx + yy
+
+    if (real_is_double)
+    {
+        cblas_daxpy(n, (const double)alpha, (const double *)xx, 1, (double *)yy, 1);
+    }
+    else // Real is Float
+    {
+        cblas_saxpy(n, (const float)alpha, (const float *)xx, 1, (float *)yy, 1);
+    }
+}
+
+real _dynorb_rdot(const int n, const real *xx, const real *yy)
+{ // LEVEL 1: Dot Product: dot =  xx.T*yy. Returns a (real) scalar value, inputs not modified.
+    if (real_is_double)
+    {
+        double dot = cblas_ddot(n, (double *)xx, 1, (double *)yy, 1);
+        return dot;
+    }
+    else // Real is Float
+    {
+        float dot = cblas_sdot(n, (float *)xx, 1, (float *)yy, 1);
+        return dot;
+    }
+}
+
+real _dynorb_rnrm2(const int n, const real *xx)
+{ // LEVEL 1: Norm 2: nrm2 =  xx.T*xx. Returns a (real) scalar value, input not modified.
+    if (real_is_double)
+    {
+        double nrm2 = cblas_dnrm2(n, (double *)xx, 1);
+        return nrm2;
+    }
+    else // Real is Float
+    {
+        float nrm2 = cblas_snrm2(n, (float *)xx, 1);
+        return nrm2;
+    }
+}
+
+void _dynorb_rmcopy(const real *src_A, const int src_M, const int src_N,
+                    const int src_StartRow, const int src_StartCol,
+                    const int cpyM, const int cpyN,
+                    real *dst_B, const int dst_M, const int dst_N,
+                    const int dst_StartRow, const int dst_StartCol)
+{ // LEVEL 2: Matrix copy: A->B (also subportions), assumes CblasColMajor
     if (src_StartRow + cpyM > src_M || src_StartCol + cpyN > src_N)
     {
         printf("Error: Source submatrix dimensions exceed bounds of source matrix.\n");
@@ -199,21 +285,8 @@ void _dynorb_rmcopy(const real *src_A, const int src_M, const int src_N, const i
     }
 }
 
-void _dynorb_raxpy(const int n, const real alpha, const real *xx, real *yy)
-{ // Vector Sum: yy = alpha*xx + yy
-
-    if (real_is_double)
-    {
-        cblas_daxpy(n, (const double)alpha, (const double *)xx, 1, (double *)yy, 1);
-    }
-    else // Real is Float
-    {
-        cblas_saxpy(n, (const float)alpha, (const float *)xx, 1, (float *)yy, 1);
-    }
-}
-
 void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real alpha, const real *A, const real *xx, const real beta, real *yy)
-{ // matrix Vector Multiplication: yy = alpha*(A*xx) + beta*yy
+{ // LEVEL 2: Matrix Vector Multiplication: yy = alpha*(A*xx) + beta*yy
 
     if (real_is_double)
     {
@@ -278,7 +351,7 @@ void _dynorb_rmprint(const real *A, const int m, const int n)
         printf("    ");
         for (int j = 0; j < n; ++j)
         {
-            printf("%.4f", EL(A, m, n, i, j));
+            printf("%.4f", _dynorb_EL(A, m, n, i, j));
             if (j < n - 1)
             {
                 printf(", ");
