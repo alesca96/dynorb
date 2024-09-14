@@ -402,7 +402,7 @@ void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 
     // Allocate Memory for Current State, Inner State:
     real yy[sys_size];
-    memcpy(yy, yy0, sys_size * sizeof(real)); // Current state at t0 = initial state
+    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
     // Allocate Memory for derivatives at each stage:
     real ff[sys_size * n_stages]; // (ff = dyy/dt)
@@ -432,12 +432,16 @@ void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         // Store results:
         if (t > t1)
         {
-            memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
+            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
             tt[step] = t;
             printf("_dynorb_rk1 : Breaking From Loop<t = %f [s]>", t);
+            break;
         }
-        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
-        tt[step] = t;
+        else
+        {
+            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+            tt[step] = t;
+        }
     }
 }
 
@@ -471,7 +475,7 @@ void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     // Allocate Memory for Current State, Inner State:
     real yy[sys_size];
     real yy_inner[sys_size];
-    memcpy(yy, yy0, sys_size * sizeof(real)); // Current state at t0 = initial state
+    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
     // Allocate Memory for derivatives at each stage:
     real ff[sys_size * n_stages];
@@ -486,7 +490,8 @@ void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         for (int i = 0; i < n_stages; ++i)
         {
             real t_inner = t + a[i] * h;
-            memcpy(yy_inner, yy, sys_size * sizeof(real));
+            _dynorb_rvcopy(sys_size, yy, yy_inner);
+
             for (int j = 0; j < i; ++j)
             {
                 for (int k = 0; k < sys_size; ++k)
@@ -512,13 +517,16 @@ void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         // Store results:
         if (t > t1)
         {
-            memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
+            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
             tt[step] = t;
             printf("_dynorb_rk2 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
-        tt[step] = t;
+        else
+        {
+            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+            tt[step] = t;
+        }
     }
 }
 
@@ -558,7 +566,7 @@ void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     // Allocate Memory for Current State, Inner State:
     real yy[sys_size];
     real yy_inner[sys_size];
-    memcpy(yy, yy0, sys_size * sizeof(real)); // Current state at t0 = initial state
+    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
     // Allocate Memory for derivatives at each stage:
     real ff[sys_size * n_stages];
@@ -573,7 +581,7 @@ void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         for (int i = 0; i < n_stages; ++i)
         {
             real t_inner = t + a[i] * h;
-            memcpy(yy_inner, yy, sys_size * sizeof(real));
+            _dynorb_rvcopy(sys_size, yy, yy_inner);
             for (int j = 0; j < i; ++j)
             {
                 for (int k = 0; k < sys_size; ++k)
@@ -599,13 +607,16 @@ void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         // Store results:
         if (t > t1)
         {
-            memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
+            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
             tt[step] = t;
             printf("_dynorb_rk3 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
-        tt[step] = t;
+        else
+        {
+            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+            tt[step] = t;
+        }
     }
 }
 
@@ -654,7 +665,7 @@ void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     // Allocate Memory for Current State, Inner State:
     real yy[sys_size];
     real yy_inner[sys_size];
-    memcpy(yy, yy0, sys_size * sizeof(real)); // Current state at t0 = initial state
+    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
     // Allocate Memory for derivatives at each stage:
     real ff[sys_size * n_stages];
@@ -669,7 +680,7 @@ void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         for (int i = 0; i < n_stages; ++i)
         {
             real t_inner = t + a[i] * h;
-            memcpy(yy_inner, yy, sys_size * sizeof(real));
+            _dynorb_rvcopy(sys_size, yy, yy_inner);
             for (int j = 0; j < i; ++j)
             {
                 for (int k = 0; k < sys_size; ++k)
@@ -695,13 +706,16 @@ void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         // Store results:
         if (t > t1)
         {
-            memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
+            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
             tt[step] = t;
             printf("_dynorb_rk4 : Breaking From Loop<t = %f [s]>", t);
             break;
         }
-        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
-        tt[step] = t;
+        else
+        {
+            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+            tt[step] = t;
+        }
     }
 }
 
@@ -727,17 +741,12 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
 
     // Initialize Algorithm:
     real t = t0;
-    real *yy = (real *)malloc(sys_size * sizeof(real));
-    if (yy == NULL)
-    {
-        perror("Memory allocation failed for yy");
-        exit(EXIT_FAILURE);
-    }
-    memcpy(yy, yy0, sys_size * sizeof(real));
+    real yy[sys_size];
+    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
     // Copy First State and Instant in Output:
     tt[0] = t0;
-    memcpy(YY_t, yy0, sys_size * sizeof(real));
+    _dynorb_rvcopy(sys_size, yy0, YY_t); // Current state at t0 = initial state
 
     // Allocate Memory for state and derivatives at interval boundaries:
     real yy1_[sys_size];
@@ -756,7 +765,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
 
         // Left Boundary of Interval:
         real t1_ = t;
-        memcpy(yy1_, yy, sys_size * sizeof(real));
+        _dynorb_rvcopy(sys_size, yy, yy1_);
         odeFunction(t1_, yy1_, params, ff1_);
 
         // Compute yy2_
@@ -773,7 +782,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
         // Predictor-Corrector Loop
         while (err > tol && iter <= rmax_iter)
         {
-            memcpy(yy2pred_, yy2_, sys_size * sizeof(real));
+            _dynorb_rvcopy(sys_size, yy2_, yy2pred_);
             odeFunction(t2_, yy2pred_, params, ff2_);
 
             // Average f value
@@ -788,7 +797,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
                 yy2_[i] = yy1_[i] + (h * ffavg_[i]);
             }
 
-            // Error calculation
+            // Error calculation // TODO: remove fabs
             err = fabs((yy2_[0] - yy2pred_[0]) / (yy2_[0] + DBL_EPSILON));
             for (int i = 1; i < sys_size; ++i)
             {
@@ -812,9 +821,9 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
 
         // Update
         t += h;
-        memcpy(yy, yy2_, sys_size * sizeof(real));
+        _dynorb_rvcopy(sys_size, yy2_, yy);
         tt[step] = t;
-        memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
+        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
         step++;
     }
 }

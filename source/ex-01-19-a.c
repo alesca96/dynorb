@@ -1,10 +1,6 @@
 #define DYNORB_IMPLEMENTATION
 #define USE_DOUBLE // USE_FLOAT
-// #define USE_CBLAS
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>            // For memcpy
+#define USE_CBLAS
 #include "..\include\dynorb.h" // Include your custom RK header file
 
 /* Define the system of ODEs: example 1.18 (Chapter 1, pag.45)
@@ -77,24 +73,18 @@ int main(void)
         };
 
     // Step 1: Initial conditions and Step Size:
-    const int sys_size = 2;           // System size (2 ODEs)
-    const real t0 = 0.0;              // Initial time
-    const real t1 = 110.0;            // Final time
     const real x0 = 0.0;              // Initial Position
     const real x_dot0 = 0.0;          // Initial Velocity
     const real yy0[2] = {x0, x_dot0}; // Initial State
-
-    // Step Size:
-    real h = 1.0;
 
     // Step 2: Setup odeSys and solverConf structure:
     _dynorb_odeSys SimpHarmOscSys =
         {
             .odeFunction = (_dynorb_odeFun *)SimpHarmOsc,
             .params = &p,
-            .sys_size = sys_size,
-            .t0 = t0,
-            .t1 = t1,
+            .sys_size = 2,
+            .t0 = 0.0,
+            .t1 = 110.0,
             .yy0 = yy0,
             .tt = NULL,
             .YY_t = NULL,
@@ -102,17 +92,20 @@ int main(void)
 
     _dynorb_solverConf solv_conf =
         {
-            .h = h,
-            .n_steps = (int)(((SimpHarmOscSys.t1 - SimpHarmOscSys.t0) + solv_conf.h - 1.0) / solv_conf.h),
+            .h = 0.1,
+            .n_steps = (int)((((SimpHarmOscSys.t1 - SimpHarmOscSys.t0)) / solv_conf.h) + 1.0),
         };
 
-    // Print:
-    printf("Time Step Size: <h = %f [s]>\n", h);
-    printf("Number Steps: <solv_conf.n_steps = %d>\n", solv_conf.n_steps);
+    // Memory Allocation For Solution:
+    real tt[solv_conf.n_steps];
+    real Y_tt[solv_conf.n_steps * SimpHarmOscSys.sys_size];
+    // Add Pointers to structure:
+    SimpHarmOscSys.tt = tt;
+    SimpHarmOscSys.YY_t = Y_tt;
 
-    // Memory Allocation for Solution:
-    SimpHarmOscSys.tt = (real *)malloc(solv_conf.n_steps * sizeof(real));              // Allocate memory for time array:
-    SimpHarmOscSys.YY_t = (real *)malloc(solv_conf.n_steps * sys_size * sizeof(real)); // Allocate memory for solution array:
+    // Print:
+    printf("Time Step Size: <h = %f [s]>\n", solv_conf.h);
+    printf("Number Steps: <solv_conf.n_steps = %d>\n", solv_conf.n_steps);
 
     // Step 3: Perform Integration using custom RK method:
     _dynorb_heun_(&SimpHarmOscSys, &solv_conf);
@@ -126,20 +119,16 @@ int main(void)
     }
 
     // Step 5: Loop over time steps and calculate analytical solution
-    for (int i = 0; i < solv_conf.n_steps - 1; i++) // -1 beacause last line might be spurious
+    for (int i = 0; i < solv_conf.n_steps; i++) // -1 beacause last line might be spurious
     {
         // Analytical Solution
         real x_a = 0.0;
         SimpHarmOscAnalyticalSolution(SimpHarmOscSys.tt[i], yy0, &x_a, &p);
-        fprintf(outfile, "%.10f %.10f %.10f %.10f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.YY_t[i * sys_size], SimpHarmOscSys.YY_t[i * sys_size + 1], x_a);
+        fprintf(outfile, "%.10f %.10f %.10f %.10f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size + 1], x_a);
     }
 
     // Closing the file:
     fclose(outfile);
-
-    // Step 6: Free Memory and Close Data File:
-    free(SimpHarmOscSys.YY_t);
-    free(SimpHarmOscSys.tt);
 
     /* ==========================================================
      * GNUPLOT: Use Gnuplot to plot the data
