@@ -17,6 +17,8 @@ if exist .\bin\release\out.exe (
     del .\bin\release\out.exe
 )
 
+@echo on
+
 :: Compile the source file to create out.exe
 gcc ^
 -Wall ^

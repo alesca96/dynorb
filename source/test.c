@@ -307,6 +307,35 @@ int main(void)
         printf("Y = [%f, %f, %f]\n", yy[0], yy[1], yy[2]);
     }
 
+    /* TEST: */
+    {
+        const char *test_description = "Test Static Memory Allocation and Fill Vector";
+        printTestInfo(test_description, ++test_number);
+
+        // Initialize:
+        _dynorb_solverConf solv_conf = {
+            .h = 1.0,
+            .n_steps = (int)(((10.0 - 0.0) + solv_conf.h - 1.0) / solv_conf.h),
+        };
+
+        // Use the calculated n_steps to declare the array
+        real xx[solv_conf.n_steps];
+        // Fill vector with zeros:
+        _dynorb_rvfill(xx, (solv_conf.n_steps), 0.0);
+        // Print
+        printf("xx =\n");
+        _dynorb_rmprint(xx, 1, (solv_conf.n_steps));
+
+        // Use the calculated n_steps to declare the array
+        const int n_steps = solv_conf.n_steps;
+        real yy[n_steps];
+        // Fill other values:
+        _dynorb_rvfill(yy, n_steps, 42.0);
+        // Print:
+        printf("\nyy =\n");
+        _dynorb_rmprint(yy, (solv_conf.n_steps), 1);
+    }
+
     /* TEST:  Complted: */
     printf("\n--------------------------------------------\n");
     printf("\033[1m\033[32mTEST SCRIPT ends:\n");

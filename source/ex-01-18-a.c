@@ -97,7 +97,7 @@ int main(void)
         gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rk4, h, abstol, reltol);
 
     // Step 4: Open file to store results
-    FILE *outfile = fopen("./data/ex_01_18a.txt", "w");
+    FILE *outfile = fopen("./data/ex_01_18-a.txt", "w");
     if (outfile == NULL)
     {
         perror("Error opening file");
@@ -150,12 +150,12 @@ int main(void)
         "set title 'Example 18 Chapter 01: Simple Harmonic Oscillator using GSL'\n"
         "set xlabel 'Time t [s]'\n"
         "set ylabel 'x(t) [m], v(t) [m/s], x_a(t) [m]'\n"
-        "plot './data/ex_01_18a.txt' using 1:2 with lines title 'x(t)', "
-        "'./data/ex_01_18a.txt' using 1:3 with lines title 'v(t)', "
-        "'./data/ex_01_18a.txt' using 1:4 with points pt 7 ps 1 lc rgb 'black' title 'x_a(t)'\n";
+        "plot './data/ex_01_18-a.txt' using 1:2 with lines title 'x(t)', "
+        "'./data/ex_01_18-a.txt' using 1:3 with lines title 'v(t)', "
+        "'./data/ex_01_18-a.txt' using 1:4 with points pt 7 ps 1 lc rgb 'black' title 'x_a(t)'\n";
 
-    // "plot './data/ex_01_18a.txt' using 1:2 with points pt 1 ps 3 lc rgb 'red' title 'x(t)', "
-    // "'./data/ex_01_18a.txt' using 1:4 with points pt 2 ps 3 lc rgb 'blue' title 'x_a(t)'\n";
+    // "plot './data/ex_01_18-a.txt' using 1:2 with points pt 1 ps 3 lc rgb 'red' title 'x(t)', "
+    // "'./data/ex_01_18-a.txt' using 1:4 with points pt 2 ps 3 lc rgb 'blue' title 'x_a(t)'\n";
 
     FILE *gnuplot = popen("gnuplot -persistent", "w");
     if (gnuplot)

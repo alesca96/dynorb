@@ -76,12 +76,19 @@ typedef struct
     real *YY_t;                  // Solution Array
 } _dynorb_odeSys;
 
+typedef struct
+{
+    const real h;
+    const int n_steps;
+} _dynorb_solverConf;
+
 /* UTILITY FUNCTIONS: */
 int _dynorb_min(int a, int b);
 int _dynorb_max(int a, int b);
 real _dynorb_rmin(real a, real b);
 real _dynorb_rmax(real a, real b);
 void _dynorb_rmprint(const real *A, const int m, const int n);
+void _dynorb_rvfill(real *xx, const int n, const real a);
 
 /* Basic Linear Algebra Subroutines: */
 // Thin wrappers of CBLAS if USE_CBLAS. Else custum implementation.
@@ -110,7 +117,7 @@ void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const i
  * @return Void.
  *
  */
-void _dynorb_rk1(_dynorb_odeSys *sys, const real h, const int n_steps);
+void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 /**
  *
@@ -127,7 +134,7 @@ void _dynorb_rk1(_dynorb_odeSys *sys, const real h, const int n_steps);
  * @return Void.
  *
  */
-void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps);
+void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 /**
  *
@@ -144,7 +151,7 @@ void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps);
  * @return Void.
  *
  */
-void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps);
+void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 /**
  *
@@ -161,7 +168,7 @@ void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps);
  * @return Void.
  *
  */
-void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps);
+void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 /**
  *
@@ -178,7 +185,7 @@ void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps);
  * @return Void.
  *
  */
-void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps);
+void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 #endif // DYNORB_H_
 
@@ -362,8 +369,16 @@ void _dynorb_rmprint(const real *A, const int m, const int n)
     printf("]\n");
 }
 
+void _dynorb_rvfill(real *xx, const int n, const real a)
+{ // Fills vector components xx[i] = a for i  = [0, n)
+    for (int i = 0; i < n; ++i)
+    {
+        xx[i] = a;
+    }
+}
+
 /* Core Library Functions: */
-void _dynorb_rk1(_dynorb_odeSys *sys, const real h, const int n_steps)
+void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -375,18 +390,22 @@ void _dynorb_rk1(_dynorb_odeSys *sys, const real h, const int n_steps)
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
 
+    // Open up _dynorb_solvConf [TODO: remove this]
+    const real h = solver_configuration->h;
+    const int n_steps = solver_configuration->n_steps;
+
     //  RK1 (Euler)
-    int n_stages = 1;
+    const int n_stages = 1;
     real a = 0.0; // Note: a is [1 x 1]
     // real b = 1.0; // Note: b is [1 x 1]
     real c = 1.0; // Note: c is [1 x 1]
 
     // Allocate Memory for Current State, Inner State:
-    real *yy = (real *)malloc(sys_size * sizeof(real));
+    real yy[sys_size];
     memcpy(yy, yy0, sys_size * sizeof(real)); // Current state at t0 = initial state
 
     // Allocate Memory for derivatives at each stage:
-    real *ff = (real *)malloc(sys_size * n_stages * sizeof(real)); // (ff = dyy/dt)
+    real ff[sys_size * n_stages]; // (ff = dyy/dt)
 
     // Integration Time Instant:
     real t = t0;
@@ -420,15 +439,9 @@ void _dynorb_rk1(_dynorb_odeSys *sys, const real h, const int n_steps)
         memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         tt[step] = t;
     }
-
-    // Free Memory:
-    // printf("_dynorb_rk1: Begin Freeing Memory:\n");
-    free(ff);
-    free(yy);
-    // printf("_dynorb_rk1: Done Freeing Memory:\n");
 }
 
-void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps)
+void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -440,8 +453,12 @@ void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps)
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
 
+    // Open up _dynorb_solvConf [TODO: remove this]
+    const real h = solver_configuration->h;
+    const int n_steps = solver_configuration->n_steps;
+
     //  RK2 (Heun)
-    int n_stages = 2;
+    const int n_stages = 2;
     real a[2] = {0.0, 0.0}; // Note: a is [1 x 2]
     real b[2] = {0.0, 0.0}; // Note: b is [2 x 1]
     real c[2] = {0.0, 0.0}; // Note: c is [2 x 1]
@@ -452,12 +469,12 @@ void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps)
     c[1] = 0.5;
 
     // Allocate Memory for Current State, Inner State:
-    real *yy = (real *)malloc(sys_size * sizeof(real));
-    real *yy_inner = (real *)malloc(sys_size * sizeof(real));
+    real yy[sys_size];
+    real yy_inner[sys_size];
     memcpy(yy, yy0, sys_size * sizeof(real)); // Current state at t0 = initial state
 
     // Allocate Memory for derivatives at each stage:
-    real *ff = (real *)malloc(sys_size * n_stages * sizeof(real)); // (ff = dyy/dt)
+    real ff[sys_size * n_stages];
 
     // Integration Time Instant:
     real t = t0;
@@ -503,16 +520,9 @@ void _dynorb_rk2(_dynorb_odeSys *sys, const real h, const int n_steps)
         memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         tt[step] = t;
     }
-
-    // Free Memory:
-    // printf("_dynorb_rk2: Begin Freeing Memory:\n");
-    free(yy_inner);
-    free(ff);
-    free(yy);
-    // printf("_dynorb_rk2: Done Freeing Memory:\n");
 }
 
-void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps)
+void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -524,8 +534,12 @@ void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps)
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
 
+    // Open up _dynorb_solvConf [TODO: remove this]
+    const real h = solver_configuration->h;
+    const int n_steps = solver_configuration->n_steps;
+
     //  RK3
-    int n_stages = 3;
+    const int n_stages = 3;
     real a[3];     // Note: a is [1 x 3]
     real b[3 * 2]; // Note: b is [3 x 2]
     real c[3];     // Note: c is [3 x 1]
@@ -540,15 +554,14 @@ void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps)
     b[5] = 2.0;
     c[0] = 1.0 / 6;
     c[1] = 2.0 / 3;
-    c[2] = 1.0 / 6;
 
     // Allocate Memory for Current State, Inner State:
-    real *yy = (real *)malloc(sys_size * sizeof(real));
-    real *yy_inner = (real *)malloc(sys_size * sizeof(real));
+    real yy[sys_size];
+    real yy_inner[sys_size];
     memcpy(yy, yy0, sys_size * sizeof(real)); // Current state at t0 = initial state
 
     // Allocate Memory for derivatives at each stage:
-    real *ff = (real *)malloc(sys_size * n_stages * sizeof(real)); // (ff = dyy/dt)
+    real ff[sys_size * n_stages];
 
     // Integration Time Instant:
     real t = t0;
@@ -594,16 +607,9 @@ void _dynorb_rk3(_dynorb_odeSys *sys, const real h, const int n_steps)
         memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         tt[step] = t;
     }
-
-    // Free Memory:
-    // printf("_dynorb_rk3: Begin Freeing Memory:\n");
-    free(yy_inner);
-    free(ff);
-    free(yy);
-    // printf("_dynorb_rk3: Done Freeing Memory:\n");
 }
 
-void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps)
+void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -615,8 +621,12 @@ void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps)
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
 
+    // Open up _dynorb_solvConf [TODO: remove this]
+    const real h = solver_configuration->h;
+    const int n_steps = solver_configuration->n_steps;
+
     //  RK4 (Runge-Kutta)
-    int n_stages = 4;
+    const int n_stages = 4;
     real a[4];     // Note: a is [1 x 4]
     real b[4 * 3]; // Note: b is [4 x 3]
     real c[4];     // Note: c is [4 x 1]
@@ -642,12 +652,12 @@ void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps)
     c[3] = 1.0 / 6;
 
     // Allocate Memory for Current State, Inner State:
-    real *yy = (real *)malloc(sys_size * sizeof(real));
-    real *yy_inner = (real *)malloc(sys_size * sizeof(real));
+    real yy[sys_size];
+    real yy_inner[sys_size];
     memcpy(yy, yy0, sys_size * sizeof(real)); // Current state at t0 = initial state
 
     // Allocate Memory for derivatives at each stage:
-    real *ff = (real *)malloc(sys_size * n_stages * sizeof(real)); // (ff = dyy/dt)
+    real ff[sys_size * n_stages];
 
     // Integration Time Instant:
     real t = t0;
@@ -693,16 +703,9 @@ void _dynorb_rk4(_dynorb_odeSys *sys, const real h, const int n_steps)
         memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         tt[step] = t;
     }
-
-    // Free Memory:
-    // printf("_dynorb_rk4: Begin Freeing Memory:\n");
-    free(yy_inner);
-    free(ff);
-    free(yy);
-    // printf("_dynorb_rk4: Done Freeing Memory:\n");
 }
 
-void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps)
+void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -713,6 +716,10 @@ void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps)
     real t1 = sys->t1;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
+
+    // Open up _dynorb_solvConf [TODO: remove this]
+    real h = solver_configuration->h;
+    const int n_steps = solver_configuration->n_steps;
 
     // Tolerance and _dynorb_Max number of steps:
     const real tol = 1.e-6;
@@ -733,12 +740,12 @@ void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps)
     memcpy(YY_t, yy0, sys_size * sizeof(real));
 
     // Allocate Memory for state and derivatives at interval boundaries:
-    real *yy1_ = (real *)malloc(sys_size * sizeof(real));
-    real *yy2_ = (real *)malloc(sys_size * sizeof(real));
-    real *ff1_ = (real *)malloc(sys_size * sizeof(real));
-    real *ff2_ = (real *)malloc(sys_size * sizeof(real));
-    real *yy2pred_ = (real *)malloc(sys_size * sizeof(real));
-    real *ffavg_ = (real *)malloc(sys_size * sizeof(real));
+    real yy1_[sys_size];
+    real yy2_[sys_size];
+    real ff1_[sys_size];
+    real ff2_[sys_size];
+    real yy2pred_[sys_size];
+    real ffavg_[sys_size];
 
     // Main Loop
     int step = 1;
@@ -825,15 +832,6 @@ void _dynorb_heun_(_dynorb_odeSys *sys, real h, const int n_steps)
         memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         step++;
     }
-
-    // Free Memory:
-    free(ffavg_);
-    free(yy2pred_);
-    free(ff2_);
-    free(ff1_);
-    free(yy2_);
-    free(yy1_);
-    free(yy);
 }
 
 #endif // DYNORB_IMPLEMENTATION

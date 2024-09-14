@@ -16,6 +16,9 @@ if exist .\bin\debug\debug_out.exe (
     del .\bin\debug\debug_out.exe
 )
 
+
+@echo on 
+
 :: Compile the source file with debug symbols
 gcc ^
 -g ^
@@ -33,6 +36,8 @@ gcc ^
 -o .\bin\debug\debug_out.exe ^
 -lgsl -lgslcblas
 
+
+@echo off
 :: Check for successful compilation
 if %errorlevel% neq 0 (
     echo Build failed!

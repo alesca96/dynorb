@@ -76,7 +76,7 @@ int main(void)
             .zeta = 0.03,
         };
 
-    // Step 1: Initial conditions:
+    // Step 1: Initial conditions and Step Size:
     const int sys_size = 2;           // System size (2 ODEs)
     const real t0 = 0.0;              // Initial time
     const real t1 = 110.0;            // Final time
@@ -84,39 +84,49 @@ int main(void)
     const real x_dot0 = 0.0;          // Initial Velocity
     const real yy0[2] = {x0, x_dot0}; // Initial State
 
-    // Step 2: Collect Data into _dynorb_odeSys structure:
-    _dynorb_odeSys SimpHarmOscSys = {
-        .odeFunction = (_dynorb_odeFun *)SimpHarmOsc,
-        .params = &p,
-        .sys_size = sys_size,
-        .t0 = t0,
-        .t1 = t1,
-        .yy0 = yy0,
-        .tt = NULL,
-        .YY_t = NULL};
+    // Step size
+    const real h = 0.1;
 
-    // Step 3: Set up Integration:
-    real h = 0.5; // Step size
-    int num_steps = (int)(floor((t1 - t0) / h) + 1);
+    // Step 2: odeSys and solverConf structure:
+    _dynorb_odeSys SimpHarmOscSys =
+        {
+            .odeFunction = (_dynorb_odeFun *)SimpHarmOsc,
+            .params = &p,
+            .sys_size = sys_size,
+            .t0 = t0,
+            .t1 = t1,
+            .yy0 = yy0,
+            .tt = NULL,
+            .YY_t = NULL,
+        };
+
+    _dynorb_solverConf solv_conf =
+        {
+            .h = h,
+            .n_steps = (int)(((SimpHarmOscSys.t1 - SimpHarmOscSys.t0) + solv_conf.h - 1.0) / solv_conf.h),
+        };
+
+    // Print:
     printf("Time Step Size: <h = %f [s]>\n", h);
-    printf("Number Steps: <num_steps = %d>\n", num_steps);
+    printf("Number Steps: <solv_conf.n_steps = %d>\n", solv_conf.n_steps);
+
     // Memory Allocation For Solution:
-    SimpHarmOscSys.tt = (real *)malloc(num_steps * sizeof(real));              // Allocate memory for time array:
-    SimpHarmOscSys.YY_t = (real *)malloc(num_steps * sys_size * sizeof(real)); // Allocate memory for solution array:
+    SimpHarmOscSys.tt = (real *)malloc(solv_conf.n_steps * sizeof(real));              // Allocate memory for time array:
+    SimpHarmOscSys.YY_t = (real *)malloc(solv_conf.n_steps * sys_size * sizeof(real)); // Allocate memory for solution array:
 
-    // Step 4: Perform Integration using custom RK method:
-    _dynorb_rk4(&SimpHarmOscSys, h, num_steps);
+    // Step 3: Perform Integration using custom RK method:
+    _dynorb_rk4(&SimpHarmOscSys, &solv_conf);
 
-    // Step 5: Open file to store results
-    FILE *outfile = fopen("./data/ex_01_18b.txt", "w");
+    // Step 4: Open file to store results
+    FILE *outfile = fopen("./data/ex_01_18-b.txt", "w");
     if (outfile == NULL)
     {
         perror("Error opening file");
         return 1;
     }
 
-    // Step 6: Loop over time steps and calculate analytical solution
-    for (int i = 0; i < num_steps - 1; i++) // -1 beacause last line might be spurious
+    // Step 5: Loop over time steps and calculate analytical solution
+    for (int i = 0; i < solv_conf.n_steps - 1; i++) // -1 beacause last line might be spurious
     {
         // Analytical Solution
         real x_a = 0.0;
@@ -124,7 +134,7 @@ int main(void)
         fprintf(outfile, "%.10f %.10f %.10f %.10f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.YY_t[i * sys_size], SimpHarmOscSys.YY_t[i * sys_size + 1], x_a);
     }
 
-    // Step 7: Free Memory and Close Data File:
+    // Step 6: Free Memory and Close Data File:
     fclose(outfile);
     free(SimpHarmOscSys.YY_t);
     free(SimpHarmOscSys.tt);
@@ -138,9 +148,9 @@ int main(void)
         "set title 'Example 18 Chapter 01: Simple Harmonic Oscillator using Custom RK4'\n"
         "set xlabel 'Time t [s]'\n"
         "set ylabel 'x(t) [m], v(t) [m/s], x_a(t) [m]'\n"
-        "plot './data/ex_01_18b.txt' using 1:2 with points pt 7 ps 0.5 lc rgb 'red' title 'x(t)', "
-        "'./data/ex_01_18b.txt' using 1:3 with points pt 7 ps 0.5 lc rgb 'blue' title 'v(t)', "
-        "'./data/ex_01_18b.txt' using 1:4 with lines lc rgb 'black' title 'x_a(t)'\n";
+        "plot './data/ex_01_18-b.txt' using 1:2 with points pt 7 ps 0.5 lc rgb 'red' title 'x(t)', "
+        "'./data/ex_01_18-b.txt' using 1:3 with points pt 7 ps 0.5 lc rgb 'blue' title 'v(t)', "
+        "'./data/ex_01_18-b.txt' using 1:4 with lines lc rgb 'black' title 'x_a(t)'\n";
 
     // Use _popen and _pclose for Windows compatibility
     FILE *gnuplot = (FILE *)popen("gnuplot -persistent", "w");
