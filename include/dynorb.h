@@ -813,21 +813,6 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
         // Update
         t += h;
         memcpy(yy, yy2_, sys_size * sizeof(real));
-        /*
-        if (step >= n_steps)
-         {
-             tt = (real *)realloc(tt, (n_steps + 1) * sizeof(real));
-             YY_t = (real *)realloc(YY_t, (n_steps + 1) * sys_size * sizeof(real));
-             tt[step] = t;
-             memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
-             printf("Number of estimated steps (n_steps = %d) surpassed. Using 'realloc'.\n", n_steps);
-         }
-         else
-         {
-             tt[step] = t;
-             memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
-         }
-        */
         tt[step] = t;
         memcpy(&YY_t[step * sys_size], yy, sys_size * sizeof(real));
         step++;
