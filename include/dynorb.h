@@ -298,13 +298,15 @@ void _dynorb_rrk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
  *
  * @param[inout] sys Pointer to the structure defining the ODE system.
  * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
+ * @param[in] tol Tolerance
+ * @param[in] max_iter Maximum Number of Prediction-Correction Iterations
  *
  * This function uses a column-major convention.
  *
  * @return Void.
  *
  */
-void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
+void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration, const real tol, const int max_iter);
 
 #endif // DYNORB_H_
 
@@ -842,8 +844,7 @@ void _dynorb_rrk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         }
     }
 }
-
-void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
+void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration, const real tol, const int max_iter)
 {
     // Extract pointers from the input structs
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -857,22 +858,21 @@ void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
     const real h = solver_configuration->h;
     int n_steps = solver_configuration->n_steps;
 
-    // Tolerance and max number of iterations:
-    const real tol = 0.001;
-    const int rmax_iter = 10;
+    // Internal predictor-corrector loop:
+    real ee[sys_size]; // error vector
+    real err = tol + 1.0;
+    int iter = 0;
 
     // Allocate memory for current and predicted state:
+    real t1_;
+    real t2_;
     real yy[sys_size];
-    real yy_pred[sys_size];
+    real yy1_[sys_size];
+    real yy2_[sys_size];
+    real yy2p_[sys_size];
     real ff1_[sys_size];
     real ff2_[sys_size];
     real ffavg_[sys_size];
-
-    // Internal predictor-corrector loop:
-    real ee[sys_size]; // error vector
-    _dynorb_rvfill(ee, sys_size, (tol + 1.0));
-    real err = tol + 1.0;
-    int iter = 0;
 
     // Set initial state:
     real t = t0;
@@ -881,79 +881,67 @@ void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
     // Numerical integration:
     for (int step = 0; step < n_steps; ++step)
     {
-        // Evaluate time derivatives at time t
-        odeFunction(t, yy, odeParams, ff1_);
-        // Compute initial predictor state yy_pred = yy + h * ff1_
-        _dynorb_rvcopy(sys_size, yy, yy_pred);
-        _dynorb_raxpy(sys_size, h, ff1_, yy_pred);
-        // Evaluate time derivatives at (t + h) using yy_pred
-        odeFunction((t + h), yy_pred, odeParams, ff2_);
-        // Compute corrected state: average of ff1_ and ff2_
-        _dynorb_rvcopy(sys_size, ff1_, ffavg_);
-        _dynorb_raxpy(sys_size, 1.0, ff2_, ffavg_);
-        _dynorb_rscal(sys_size, 0.5, ffavg_); // average
-        _dynorb_raxpy(sys_size, (h), ffavg_, yy);
-        // Predictor step: Copy current corrected state to yy_pred
-        _dynorb_rvcopy(sys_size, yy, yy_pred);
+        t1_ = t;
+        _dynorb_rvcopy(sys_size, yy, yy1_);
+        odeFunction(t1_, yy1_, odeParams, ff1_);
 
-        // Reset Internal predictor-corrector loop:
-        _dynorb_rvfill(ee, sys_size, (tol + 1.0));
+        // Predictor step
+        _dynorb_rvcopy(sys_size, yy1_, yy2_);
+        _dynorb_raxpy(sys_size, h, ff1_, yy2_);
+        t2_ = t1_ + h;
+
         err = tol + 1.0;
         iter = 0;
 
-        // Iteratively correct the solution using predictor-corrector
-        while (err > tol && iter <= rmax_iter)
+        // Corrector loop
+        while (err > tol && iter <= max_iter)
         {
+            _dynorb_rvcopy(sys_size, yy2_, yy2p_);    // Copy the predicted state
+            odeFunction(t2_, yy2p_, odeParams, ff2_); // Compute f(t+h, y_pred)
 
-            // Evaluate time derivatives at (t + h) using yy_pred
-            odeFunction((t + h), yy_pred, odeParams, ff2_);
-            // Compute corrected state: average of ff1_ and ff2_
-            _dynorb_rvcopy(sys_size, ff1_, ffavg_);
-            _dynorb_raxpy(sys_size, 1.0, ff2_, ffavg_);
-            _dynorb_rscal(sys_size, 0.5, ffavg_); // average
-            _dynorb_raxpy(sys_size, h, ffavg_, yy);
+            // Compute average of slopes
+            _dynorb_rvcopy(sys_size, ff2_, ffavg_);
+            _dynorb_raxpy(sys_size, 1.0, ff1_, ffavg_); // ffavg = ff1 + ff2
+            _dynorb_rscal(sys_size, 0.5, ffavg_);       // ffavg = 0.5 * (ff1 + ff2)
 
-            // Compute error vector:
-            _dynorb_rvcopy(sys_size, yy, ee);
-            _dynorb_raxpy(sys_size, -1.0, yy_pred, ee);
-            //_dynorb_rmprint(ee, sys_size, 1);
+            // Update the predicted state using the average slopes
+            _dynorb_rvcopy(sys_size, yy1_, yy2_); // yy2_ = yy1_ + h * ffavg_
+            _dynorb_raxpy(sys_size, h, ffavg_, yy2_);
 
-            // Compute max absolute error
-            err = fabs(ee[0]);
-            for (int i = 1; i < sys_size; ++i)
+            // Compute the error: ee = yy2_ - yy2p_
+            _dynorb_rvcopy(sys_size, yy2_, ee); // ee = yy2_ - yy2p_
+            _dynorb_raxpy(sys_size, -1.0, yy2p_, ee);
+
+            // Compute the maximum relative error
+            err = 0.0;
+            for (int i = 0; i < sys_size; ++i)
             {
-                real abs_diff = fabs(ee[i]);
-
-                if (abs_diff > err)
+                real tmp = (real)fabs(ee[i] / (yy2_[i] + DBL_EPSILON));
+                if (tmp > err)
                 {
-                    err = abs_diff;
+                    err = tmp;
                 }
             }
 
-            // Predictor step: Copy current corrected state to yy_pred
-            _dynorb_rvcopy(sys_size, yy, yy_pred);
-
-            printf("step %d | iter %d | err %f | tol %f\n", step, iter, err, tol);
-
-            // Increment iteration count
             ++iter;
-
-            // Safety check for exceeding max iterations
-            if (iter >= rmax_iter)
-            {
-                printf("\nMaximum number of iterations: %d\n", rmax_iter);
-                printf("Exceeded at time: %f\n", t);
-                printf("In function '_dynorb_rheun'. \n\n");
-                break;
-            }
         }
 
-        // Update integration time t += h;
-        t = (step + 1) * h;
+        // Safety check for exceeding max iterations
+        if (iter >= max_iter)
+        {
+            printf("\nMaximum number of iterations: %d\n", max_iter);
+            printf("Exceeded at time: %f\n", t);
+            printf("In function '_dynorb_rheun'. \n\n");
+            break;
+        }
+
+        // Update integration time: t += h
+        t += h;
 
         // Store the results:
-        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+        _dynorb_rvcopy(sys_size, yy2_, yy); // Update the state
         tt[step] = t;
+        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
 
         // Stop if the final time is exceeded
         if (t >= t1)

@@ -1,5 +1,5 @@
 #define DYNORB_IMPLEMENTATION
-#define USE_DOUBLE // USE_FLOAT
+#define USE_DOUBLE // USE_FLOAT // USE_DOUBLE
 #define USE_CBLAS
 #include "..\include\dynorb.h" // Include your custom RK header file
 
@@ -86,7 +86,7 @@ int main(void)
     int sys_size = 2;           // Size of odeSys
     real t0 = 0.0;              // Initial Time
     real t1 = 110.0;            // Final Time
-    real h = 1;                 // Time step
+    real h = 1.0;               // Time step
 
     // Confugure (dynamically)
     _dynorb_configure_dynamic(&SimpHarmOscSys, &solv_conf,
@@ -94,7 +94,9 @@ int main(void)
                               sys_size, t0, t1, h);
 
     // Step 3: Perform Integration using custom RK method:
-    _dynorb_rheun(&SimpHarmOscSys, &solv_conf);
+    const real tol = 1.e-6;
+    const int max_iter = 100;
+    _dynorb_rheun(&SimpHarmOscSys, &solv_conf, tol, max_iter);
 
     /* ==========================================================
      * DATA LOG: Save data
@@ -130,7 +132,7 @@ int main(void)
         "set title 'Example 19 Chapter 01: Simple Harmonic Oscillator using Custom Huen'\n"
         "set xlabel 'Time t [s]'\n"
         "set ylabel 'x(t) [m], x_{a}(t) [m]'\n"
-        "plot './data/ex_01_19-a.txt' using 1:2 with points pt 7 ps 0.5 lc rgb 'red' title 'x(t)', "
+        "plot './data/ex_01_19-a.txt' using 1:2 with lines lc rgb 'red' title 'x(t)', "
         "'./data/ex_01_19-a.txt' using 1:4 with lines lc rgb 'black' title 'x_{a}(t)'\n";
 
     // "'./data/ex_01_19-a.txt' using 1:3 with points pt 7 ps 0.5 lc rgb 'blue' title 'v(t)', "
