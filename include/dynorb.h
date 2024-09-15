@@ -62,24 +62,28 @@ const bool real_is_double = 0;
 /* MACROS: */
 #define _dynorb_EL(M, m, n, i, j) M[(j * (m)) + i]
 
-/* ODE FUNCTION AND SYSTEM: */
-typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *params, real *dyydt);
+/* ODE FUNCTION: */
+typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *odeParams, real *dyydt);
+
+/* ODE SYSTEM AND SOLVER: */
 typedef struct
 {
     _dynorb_odeFun *odeFunction; // Pointer to the ODE function
-    const void *params;          // Pointer to the parameters for the ODE function
-    const real *yy0;             // Pointer to the initial state array
-    const real t0;               // Initial time
-    const real t1;               // Final time
-    const int sys_size;          // Size of the system (number of equations)
+    void *odeParams;             // Pointer to the parameters (structure) for the ODE function
+    int sys_size;                // Size of the system (number of equations)
+    real t0;                     // Initial time
+    real t1;                     // Final time
+    real *yy0;                   // Pointer to the initial state array
     real *tt;                    // Time Steps of the Solution
     real *YY_t;                  // Solution Array
 } _dynorb_odeSys;
 
 typedef struct
 {
-    const real h;
-    const int n_steps;
+    real t0;     // Initial time
+    real t1;     // Final time
+    real h;      // Initial Step Size
+    int n_steps; // Initial Number of steps
 } _dynorb_solverConf;
 
 /* UTILITY FUNCTIONS: */
@@ -90,7 +94,7 @@ real _dynorb_rmax(real a, real b);
 void _dynorb_rmprint(const real *A, const int m, const int n);
 void _dynorb_rvfill(real *xx, const int n, const real a);
 
-/* Basic Linear Algebra Subroutines: */
+/* BASIC LINEAR ALGEBRA SUBROUTINES: */
 // Thin wrappers of CBLAS if USE_CBLAS. Else custum implementation.
 real _dynorb_rdot(const int n, const real *xx, const real *yy);
 real _dynorb_rnrm2(const int n, const real *xx);
@@ -103,14 +107,79 @@ void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const i
 /* CORE FUNCTIONS: */
 
 /**
+ * @brief Frees dynamically allocated memory in the ODE system.
+ *
+ * This function releases the memory allocated for the time steps array (`tt`)
+ * and the solution array (`YY_t`) in the ODE system.
+ *
+ * @param[in] ode_system Pointer to the structure defining the ODE system.
+ *
+ * @return[out] void
+ */
+void _dynorb_free(_dynorb_odeSys *ode_system);
+
+/**
+ * @brief Configures an ODE system using dynamic memory allocation.
+ *
+ * This function initializes the ODE system for solving with dynamic memory
+ * allocation for time steps (`tt`) and solution array (`YY_t`). It computes
+ * the number of steps, allocates memory, and fills the ODE system and solver
+ * configuration structures. It also checks for memory allocation failures.
+ *
+ * @param[in] ode_system Pointer to the structure defining the ODE system.
+ * @param[in] solver_configuration Pointer to the solver configuration structure.
+ * @param[in] ode_function Pointer to the ODE function to be solved.
+ * @param[in] odeParams Pointer to any additional parameters for the ODE function.
+ * @param[in] yy0 Pointer to the initial conditions of the system.
+ * @param[in] sys_size Size of the system (number of state variables).
+ * @param[in] t0 Initial time of the simulation.
+ * @param[in] t1 Final time of the simulation.
+ * @param[in] h Time step size.
+ *
+ * This function uses a column-major convention.
+ * This function assumes that the user will manually free the allocated memory using
+ * `_dynorb_free()`.
+ *
+ * @return[out] void
+ */
+void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration,
+                               _dynorb_odeFun *ode_function, void *odeParams, real *yy0,
+                               const int sys_size, const real t0, const real t1, const real h);
+
+/**
+ * @brief Configures an ODE system assuming stack memory allocation.
+ *
+ * This function initializes the ODE system for solving with stack memory
+ * allocation. It computes the number of steps and provides instructions
+ * for manually allocating stack memory in the user's code.
+ *
+ * @param[in] ode_system Pointer to the structure defining the ODE system.
+ * @param[in] solver_configuration Pointer to the solver configuration structure.
+ * @param[in] ode_function Pointer to the ODE function to be solved.
+ * @param[in] odeParams Pointer to any additional parameters for the ODE function.
+ * @param[in] yy0 Pointer to the initial conditions of the system.
+ * @param[in] sys_size Size of the system (number of state variables).
+ * @param[in] t0 Initial time of the simulation.
+ * @param[in] t1 Final time of the simulation.
+ * @param[in] h Time step size.
+ *
+ * This function uses a column-major convention.
+ * This function assumes that the user will allocate stack memory in their code.
+ *
+ * @return[out] void
+ */
+void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration,
+                              _dynorb_odeFun *ode_function, void *odeParams, real *yy0,
+                              const int sys_size, const real t0, const real t1, const real h);
+
+/**
  *
  * @brief Performs Euler (RK1) numerical integration for ODE systems.
  *
  * This function integrates an ODE system using a specified order of the Euler (Runge-Kutta order 1) method.
  *
  * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] h Time step size for the integration.
- * @param[in] n_steps Number of steps for the integration.
+ * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
  *
  * This function uses a column-major convention.
  *
@@ -126,8 +195,7 @@ void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
  * This function integrates an ODE system using a specified order of the Heun (Runge-Kutta order 2) method.
  *
  * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] h Time step size for the integration.
- * @param[in] n_steps Number of steps for the integration.
+ * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
  *
  * This function uses a column-major convention.
  *
@@ -143,8 +211,7 @@ void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
  * This function integrates an ODE system using a specified order of the Runge-Kutta order 3 method.
  *
  * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] h Time step size for the integration.
- * @param[in] n_steps Number of steps for the integration.
+ * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
  *
  * This function uses a column-major convention.
  *
@@ -160,8 +227,7 @@ void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
  * This function integrates an ODE system using a specified order of the Runge-Kutta order 4 method.
  *
  * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] h Time step size for the integration.
- * @param[in] n_steps Number of steps for the integration.
+ * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
  *
  * This function uses a column-major convention.
  *
@@ -177,8 +243,7 @@ void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
  * This function integrates an ODE system using Heun Predictor-Corrector method.
  *
  * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] h Time step size for the integration.
- * @param[in] n_steps Number of steps for the integration.
+ * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
  *
  * This function uses a column-major convention.
  *
@@ -197,7 +262,8 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
 
 #ifdef DYNORB_IMPLEMENTATION
 
-#ifdef USE_CBLAS /* CBLAS wrappers: */
+/* BASIC LINEAR ALGEBRA SUBROUTINES: */
+#ifdef USE_CBLAS // --> CBLAS wrappers
 
 void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy)
 { // LEVEL 1: Vector copy: src_x->dst_y
@@ -321,7 +387,7 @@ void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real a
 
 #endif
 
-#ifndef USE_CBLAS /* BLAS-like Custom Implementation wrappers: */
+#ifndef USE_CBLAS // --> BLAS-like Custom Implementation
 /* TODO: custom implementation-> */
 void IMPLEMENT_ALTERNATIVE_TO_CBLAS_FUNCTIONS(void)
 {
@@ -329,7 +395,7 @@ void IMPLEMENT_ALTERNATIVE_TO_CBLAS_FUNCTIONS(void)
 }
 #endif
 
-/* Utility functions: */
+/* UTILITY FUNCTIONS: */
 int _dynorb_min(int a, int b)
 {
     return (a < b) ? a : b;
@@ -377,12 +443,104 @@ void _dynorb_rvfill(real *xx, const int n, const real a)
     }
 }
 
-/* Core Library Functions: */
+/* CORE FUNCTIONS: */
+void _dynorb_free(_dynorb_odeSys *ode_system)
+{
+    free(ode_system->tt);
+    free(ode_system->YY_t);
+}
+
+void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration,
+                               _dynorb_odeFun *ode_function, void *odeParams, real *yy0,
+                               const int sys_size, const real t0, const real t1, const real h)
+{
+    // Compute (initial) number of steps:
+    int n_steps = (int)((((t1 - t0)) / h) + 1.0);
+
+    // Allocate memory for the time steps and solution array
+    ode_system->tt = (real *)malloc(n_steps * sizeof(real));
+    ode_system->YY_t = (real *)malloc(n_steps * sys_size * sizeof(real));
+
+    // Check for successful allocation
+    if (ode_system->tt == NULL || ode_system->YY_t == NULL)
+    {
+        fprintf(stderr, "ERROR: Memory allocation failed.\n");
+        if (ode_system->tt != NULL)
+            free(ode_system->tt); // Free memory if tt was allocated
+        exit(EXIT_FAILURE);
+    }
+
+    // Print dynamic memory allocation information
+    printf("\nDynamic Memory Allocation:\n");
+    printf("Remember to free the memory after usage:\n");
+    printf("    _dynorb_free(&ode_system).\n\n");
+
+    // Print stack memory allocation instructions
+    printf("For Stack Memory Allocation, use _dynorb_configure_static() and add these lines to your code:\n");
+    printf("    real tt[solver_configuration.n_steps];\n");
+    printf("    real YY_t[solver_configuration.n_steps * ode_system.sys_size];\n");
+    printf("    ode_system.tt = tt;\n");
+    printf("    ode_system.YY_t = YY_t;\n\n");
+
+    // Copy values in ode_system structure:
+    ode_system->odeFunction = ode_function;
+    ode_system->odeParams = odeParams;
+    ode_system->sys_size = sys_size;
+    ode_system->t0 = t0;
+    ode_system->t1 = t1;
+    ode_system->yy0 = yy0;
+
+    // Copy values in solver_configuration structure:
+    solver_configuration->t0 = t0;
+    solver_configuration->t1 = t1;
+    solver_configuration->h = h;
+    solver_configuration->n_steps = n_steps;
+
+    // Print:
+    printf("\nTime Step Size: <h = %f [s]>\n", solver_configuration->h);
+    printf("Number of Steps: <solv_conf.n_steps = %d>\n", solver_configuration->n_steps);
+}
+
+void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration,
+                              _dynorb_odeFun *ode_function, void *odeParams, real *yy0,
+                              const int sys_size, const real t0, const real t1, const real h)
+{
+    // Compute (initial) number of steps:
+    int n_steps = (int)((((t1 - t0)) / h) + 1.0);
+
+    // Print stack memory allocation instructions
+    ode_system->tt = NULL;
+    ode_system->YY_t = NULL;
+    printf("\nFor Stack Memory Allocation add these lines to your code:\n");
+    printf("    real tt[solver_configuration.n_steps];\n");
+    printf("    real YY_t[solver_configuration.n_steps * ode_system.sys_size];\n");
+    printf("    ode_system.tt = tt;\n");
+    printf("    ode_system.YY_t = YY_t;\n\n");
+
+    // Copy values in ode_system structure:
+    ode_system->odeFunction = ode_function;
+    ode_system->odeParams = odeParams;
+    ode_system->sys_size = sys_size;
+    ode_system->t0 = t0;
+    ode_system->t1 = t1;
+    ode_system->yy0 = yy0;
+
+    // Copy values in solver_configuration structure:
+    solver_configuration->t0 = t0;
+    solver_configuration->t1 = t1;
+    solver_configuration->h = h;
+    solver_configuration->n_steps = n_steps;
+
+    // Print:
+    printf("\nTime Step Size: <h = %f [s]>\n", solver_configuration->h);
+    printf("Number of Steps: <solv_conf.n_steps = %d>\n", solver_configuration->n_steps);
+}
+
 void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = sys->params;               // Pointer to params
+    const void *odeParams = sys->odeParams;         // Pointer to odeParams
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
@@ -415,7 +573,7 @@ void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     {
         // Evaluate Time Derivatives in [t, t+h]
         real t_inner = t + a * h;
-        odeFunction(t_inner, yy, params, ff);
+        odeFunction(t_inner, yy, odeParams, ff);
 
         // Update the state:
         for (int k = 0; k < sys_size; ++k)
@@ -449,7 +607,7 @@ void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = sys->params;               // Pointer to params
+    const void *odeParams = sys->odeParams;         // Pointer to odeParams
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
@@ -499,7 +657,7 @@ void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
                     yy_inner[k] += h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
                 }
             }
-            odeFunction(t_inner, yy_inner, params, &ff[i * sys_size]);
+            odeFunction(t_inner, yy_inner, odeParams, &ff[i * sys_size]);
         }
 
         // Update the state:
@@ -534,7 +692,7 @@ void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = sys->params;               // Pointer to params
+    const void *odeParams = sys->odeParams;         // Pointer to odeParams
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
@@ -589,7 +747,7 @@ void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
                     yy_inner[k] += h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
                 }
             }
-            odeFunction(t_inner, yy_inner, params, &ff[i * sys_size]);
+            odeFunction(t_inner, yy_inner, odeParams, &ff[i * sys_size]);
         }
 
         // Update the state:
@@ -624,7 +782,7 @@ void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = sys->params;               // Pointer to params
+    const void *odeParams = sys->odeParams;         // Pointer to odeParams
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
@@ -688,7 +846,7 @@ void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
                     yy_inner[k] += h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
                 }
             }
-            odeFunction(t_inner, yy_inner, params, &ff[i * sys_size]);
+            odeFunction(t_inner, yy_inner, odeParams, &ff[i * sys_size]);
         }
 
         // Update the state:
@@ -723,7 +881,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
 {
     // Open up _dynorb_odeSys
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
-    const void *params = sys->params;               // Pointer to params
+    const void *odeParams = sys->odeParams;         // Pointer to odeParams
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
@@ -766,7 +924,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
         // Left Boundary of Interval:
         real t1_ = t;
         _dynorb_rvcopy(sys_size, yy, yy1_);
-        odeFunction(t1_, yy1_, params, ff1_);
+        odeFunction(t1_, yy1_, odeParams, ff1_);
 
         // Compute yy2_
         for (int i = 0; i < sys_size; ++i)
@@ -783,7 +941,7 @@ void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
         while (err > tol && iter <= rmax_iter)
         {
             _dynorb_rvcopy(sys_size, yy2_, yy2pred_);
-            odeFunction(t2_, yy2pred_, params, ff2_);
+            odeFunction(t2_, yy2pred_, odeParams, ff2_);
 
             // Average f value
             for (int i = 0; i < sys_size; i++)

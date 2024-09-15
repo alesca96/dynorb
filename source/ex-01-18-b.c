@@ -16,19 +16,19 @@ typedef struct
 
 } SimpHarmOscParams;
 
-void SimpHarmOsc(const real in_t, const real *in_yy, const void *in_params, real *out_ff)
+void SimpHarmOsc(const real t, const real *yy, const void *params, real *ff)
 {
     // Parameters:
-    SimpHarmOscParams *p = (SimpHarmOscParams *)in_params;
+    SimpHarmOscParams *p = (SimpHarmOscParams *)params;
     real F0 = p->F0;
     real m = p->m;
     real om_n = p->om_n;
     real zeta = p->zeta;
     real om = p->om;
 
-    // Simple Harmonic Oscillator: out_ff = dyy/dt
-    out_ff[0] = in_yy[1];
-    out_ff[1] = (F0 / m) * sin(om * in_t) - 2 * zeta * om_n * in_yy[1] - (om_n * om_n) * in_yy[0];
+    // Simple Harmonic Oscillator: ff = dyy/dt
+    ff[0] = yy[1];
+    ff[1] = (F0 / m) * sin(om * t) - 2 * zeta * om_n * yy[1] - (om_n * om_n) * yy[0];
 }
 
 void SimpHarmOscAnalyticalSolution(real t, const real *yy0, real *x_analytical, const void *params)
@@ -62,7 +62,17 @@ void SimpHarmOscAnalyticalSolution(real t, const real *yy0, real *x_analytical, 
 
 int main(void)
 {
-    // Step 0: Define Parameters of ODE system:
+    /* ==========================================================
+     * DYNORB: Numerical Integration
+     * ========================================================== */
+
+    // Step 1: Set up of ode-System and Solver Configuration:
+
+    // Declare Structures:
+    _dynorb_odeSys SimpHarmOscSys;
+    _dynorb_solverConf solv_conf;
+
+    // Structure Fields:
     SimpHarmOscParams p =
         {
             .F0 = 1.0,
@@ -71,45 +81,31 @@ int main(void)
             .om = 0.4 * p.om_n,
             .zeta = 0.03,
         };
+    real x0 = 0.0;              // Initial Position
+    real x_dot0 = 0.0;          // Initial Velocity
+    real yy0[2] = {x0, x_dot0}; // Initial State
+    int sys_size = 2;           // Size of odeSys
+    real t0 = 0.0;              // Initial Time
+    real t1 = 110.0;            // Final Time
+    real h = 0.1;               // Time step
 
-    // Step 1: Set up of ode-System and Solver Configuration:
+    // Confugure (statically)
+    _dynorb_configure_static(&SimpHarmOscSys, &solv_conf,
+                             &SimpHarmOsc, &p, yy0,
+                             sys_size, t0, t1, h);
 
-    // Initial State:
-    const real x0 = 0.0;              // Initial Position
-    const real x_dot0 = 0.0;          // Initial Velocity
-    const real yy0[2] = {x0, x_dot0}; // Initial State
-
-    _dynorb_odeSys SimpHarmOscSys =
-        {
-            .odeFunction = (_dynorb_odeFun *)SimpHarmOsc,
-            .params = &p,
-            .sys_size = 2,
-            .t0 = 0.0,
-            .t1 = 110.0,
-            .yy0 = yy0,
-            .tt = NULL,
-            .YY_t = NULL,
-        };
-
-    _dynorb_solverConf solv_conf =
-        {
-            .h = 0.1, // 0.05,
-            .n_steps = (int)((((SimpHarmOscSys.t1 - SimpHarmOscSys.t0)) / solv_conf.h) + 1.0),
-        };
-
-    // Memory Allocation For Solution:
+    // Static Memory Allocation:
     real tt[solv_conf.n_steps];
     real Y_tt[solv_conf.n_steps * SimpHarmOscSys.sys_size];
-    // Add Pointers to structure:
     SimpHarmOscSys.tt = tt;
     SimpHarmOscSys.YY_t = Y_tt;
 
-    // Print:
-    printf("Time Step Size: <h = %f [s]>\n", solv_conf.h);
-    printf("Number Steps: <solv_conf.n_steps = %d>\n", solv_conf.n_steps);
-
     // Step 2: Perform Integration using custom RK method:
     _dynorb_rk4(&SimpHarmOscSys, &solv_conf);
+
+    /* ==========================================================
+     * DATA LOG: Save data
+     * ========================================================== */
 
     // Step 3: Open file to store results
     FILE *outfile = fopen("./data/ex_01_18-b.txt", "w");
@@ -128,7 +124,7 @@ int main(void)
         fprintf(outfile, "%.10f %.10f %.10f %.10f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size + 1], x_a);
     }
 
-    // Step 5: Free Memory and Close Data File:
+    // Step 5: Close Data File:
     fclose(outfile);
 
     /* ==========================================================
