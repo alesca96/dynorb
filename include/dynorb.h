@@ -118,7 +118,7 @@ void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const i
  *
  * @return[out] void
  */
-void _dynorb_col(const real *A, int m, int j, real *column);
+void _dynorb_rcol(const real *A, int m, int j, real *column);
 
 /**
  * @brief Extracts a row from a matrix stored in column-major order.
@@ -134,7 +134,7 @@ void _dynorb_col(const real *A, int m, int j, real *column);
  *
  * @return[out] void
  */
-void _dynorb_row(const real *A, int m, int n, int i, real *row);
+void _dynorb_rrow(const real *A, int m, int n, int i, real *row);
 
 /**
  * @brief Accesses an element from a matrix stored in column-major order.
@@ -149,7 +149,7 @@ void _dynorb_row(const real *A, int m, int n, int i, real *row);
  *
  * @return[out] real The value at the (i, j) position in the matrix.
  */
-static inline real _dynorb_el(const real *A, int m, int i, int j);
+static inline real _dynorb_rel(const real *A, int m, int i, int j);
 
 /**
  * @brief Frees dynamically allocated memory in the ODE system.
@@ -240,7 +240,7 @@ void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *so
  * @return Void.
  *
  */
-void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
+void _dynorb_rrk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 /**
  *
@@ -256,7 +256,7 @@ void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
  * @return Void.
  *
  */
-void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
+void _dynorb_rrk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 /**
  *
@@ -272,7 +272,7 @@ void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
  * @return Void.
  *
  */
-void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
+void _dynorb_rrk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 /**
  *
@@ -288,7 +288,7 @@ void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
  * @return Void.
  *
  */
-void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
+void _dynorb_rrk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 /**
  *
@@ -304,7 +304,7 @@ void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
  * @return Void.
  *
  */
-void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
+void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 
 #endif // DYNORB_H_
 
@@ -478,7 +478,7 @@ void _dynorb_rmprint(const real *A, const int m, const int n)
         printf("    ");
         for (int j = 0; j < n; ++j)
         {
-            printf("%.4f", _dynorb_el(A, m, i, j));
+            printf("%.4f", _dynorb_rel(A, m, i, j));
             if (j < n - 1)
             {
                 printf(", ");
@@ -499,23 +499,23 @@ void _dynorb_rvfill(real *xx, const int n, const real a)
 
 /* CORE FUNCTIONS: */
 
-void _dynorb_col(const real *A, int m, int j, real *column)
+void _dynorb_rcol(const real *A, int m, int j, real *column)
 {
     for (int i = 0; i < m; i++)
     {
-        column[i] = _dynorb_el(A, m, i, j); // Accessing element A[i, j]
+        column[i] = _dynorb_rel(A, m, i, j); // Accessing element A[i, j]
     }
 }
 
-void _dynorb_row(const real *A, int m, int n, int i, real *row)
+void _dynorb_rrow(const real *A, int m, int n, int i, real *row)
 {
     for (int j = 0; j < n; j++)
     {
-        row[j] = _dynorb_el(A, m, i, j); // Accessing element A[i, j]
+        row[j] = _dynorb_rel(A, m, i, j); // Accessing element A[i, j]
     }
 }
 
-static inline real _dynorb_el(const real *A, int m, int i, int j)
+static inline real _dynorb_rel(const real *A, int m, int i, int j)
 {
     return A[(j * m) + i];
 }
@@ -607,7 +607,7 @@ void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *so
     printf("Number of Steps: <solv_conf.n_steps = %d>\n", solver_configuration->n_steps);
 }
 
-void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
+void _dynorb_rrk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up _dynorb_odeSys [TODO: remove this]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -654,13 +654,13 @@ void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 
         if (t > t1)
         {
-            printf("\n_dynorb_rk1: Breaking From Loop at <t = %f [s]>", t);
+            printf("\n_dynorb_rrk1: Breaking From Loop at <t = %f [s]>", t);
             break;
         }
     }
 }
 
-void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
+void _dynorb_rrk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up structures [TODO: remove these copies]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -707,13 +707,13 @@ void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         // Safety check:
         if (t > t1)
         {
-            printf("\n_dynorb_rk2: Breaking From Loop at <t = %f [s]>", t);
+            printf("\n_dynorb_rrk2: Breaking From Loop at <t = %f [s]>", t);
             break;
         }
     }
 }
 
-void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
+void _dynorb_rrk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up structures [TODO: remove these copies]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -772,13 +772,13 @@ void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 
         if (t > t1)
         {
-            printf("\n_dynorb_rk3: Breaking From Loop at <t = %f [s]>", t);
+            printf("\n_dynorb_rrk3: Breaking From Loop at <t = %f [s]>", t);
             break;
         }
     }
 }
 
-void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
+void _dynorb_rrk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
     // Open up structures [TODO: remove these copies]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
@@ -837,119 +837,150 @@ void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 
         if (t > t1)
         {
-            printf("\n_dynorb_rk3: Breaking From Loop at <t = %f [s]>", t);
+            printf("\n_dynorb_rrk3: Breaking From Loop at <t = %f [s]>", t);
             break;
         }
     }
 }
 
-void _dynorb_heun_(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
+void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
-    // Open up _dynorb_odeSys
+    // Extract pointers from the input structs
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
     const void *odeParams = sys->odeParams;         // Pointer to odeParams
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
-    real t0 = sys->t0;                              // Initial time
-    real t1 = sys->t1;                              // Final time
+    const real t0 = sys->t0;                        // Initial time
+    const real t1 = sys->t1;                        // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
+    const real h = solver_configuration->h;
+    int n_steps = solver_configuration->n_steps;
 
-    // Open up _dynorb_solvConf [TODO: remove this]
-    real h = solver_configuration->h;
-    const int n_steps = solver_configuration->n_steps;
+    // Tolerance and max number of iterations:
+    const real tol = 0.001;
+    const int rmax_iter = 10;
 
-    // Tolerance and _dynorb_Max number of steps:
-    const real tol = 1.e-6;
-    const int rmax_iter = 100;
-
-    // Initialize Algorithm:
-    real t = t0;
+    // Allocate memory for current and predicted state:
     real yy[sys_size];
-    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
-
-    // Copy First State and Instant in Output:
-    tt[0] = t0;
-    _dynorb_rvcopy(sys_size, yy0, YY_t); // Current state at t0 = initial state
-
-    // Allocate Memory for state and derivatives at interval boundaries:
-    real yy1_[sys_size];
-    real yy2_[sys_size];
+    real yy_pred[sys_size];
     real ff1_[sys_size];
     real ff2_[sys_size];
-    real yy2pred_[sys_size];
     real ffavg_[sys_size];
 
-    // Main Loop
-    int step = 1;
-    while (t < t1 && step < n_steps)
+    // Internal predictor-corrector loop:
+    real ee[sys_size]; // error vector
+    _dynorb_rvfill(ee, sys_size, (tol + 1.0));
+    real err = tol + 1.0;
+    int iter = 0;
+
+    // Set initial state:
+    real t = t0;
+    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
+
+    // Numerical integration:
+    for (int step = 0; step < n_steps; ++step)
     {
-        // Step Size:
-        h = _dynorb_rmin(h, t1 - t);
+        // Evaluate time derivatives at time t
+        odeFunction(t, yy, odeParams, ff1_);
+        // Compute initial predictor state yy_pred = yy + h * ff1_
+        _dynorb_rvcopy(sys_size, yy, yy_pred);
+        _dynorb_raxpy(sys_size, h, ff1_, yy_pred);
+        // Evaluate time derivatives at (t + h) using yy_pred
+        odeFunction((t + h), yy_pred, odeParams, ff2_);
+        // Compute corrected state: average of ff1_ and ff2_
+        _dynorb_rvcopy(sys_size, ff1_, ffavg_);
+        _dynorb_raxpy(sys_size, 1.0, ff2_, ffavg_);
+        _dynorb_rscal(sys_size, 0.5, ffavg_); // average
+        _dynorb_raxpy(sys_size, (h), ffavg_, yy);
+        // Predictor step: Copy current corrected state to yy_pred
+        _dynorb_rvcopy(sys_size, yy, yy_pred);
 
-        // Left Boundary of Interval:
-        real t1_ = t;
-        _dynorb_rvcopy(sys_size, yy, yy1_);
-        odeFunction(t1_, yy1_, odeParams, ff1_);
+        // Reset Internal predictor-corrector loop:
+        _dynorb_rvfill(ee, sys_size, (tol + 1.0));
+        err = tol + 1.0;
+        iter = 0;
 
-        // Compute yy2_
-        for (int i = 0; i < sys_size; ++i)
-        {
-            yy2_[i] = yy1_[i] + ff1_[i] * h;
-        }
-
-        // Right Boundary of the Interval:
-        real t2_ = t1_ + h;
-        real err = tol + 1;
-        int iter = 0;
-
-        // Predictor-Corrector Loop
+        // Iteratively correct the solution using predictor-corrector
         while (err > tol && iter <= rmax_iter)
         {
-            _dynorb_rvcopy(sys_size, yy2_, yy2pred_);
-            odeFunction(t2_, yy2pred_, odeParams, ff2_);
 
-            // Average f value
-            for (int i = 0; i < sys_size; i++)
-            {
-                ffavg_[i] = 0.5 * (ff1_[i] + ff2_[i]);
-            }
+            // Evaluate time derivatives at (t + h) using yy_pred
+            odeFunction((t + h), yy_pred, odeParams, ff2_);
+            // Compute corrected state: average of ff1_ and ff2_
+            _dynorb_rvcopy(sys_size, ff1_, ffavg_);
+            _dynorb_raxpy(sys_size, 1.0, ff2_, ffavg_);
+            _dynorb_rscal(sys_size, 0.5, ffavg_); // average
+            _dynorb_raxpy(sys_size, h, ffavg_, yy);
 
-            // Corrected value
-            for (int i = 0; i < sys_size; i++)
-            {
-                yy2_[i] = yy1_[i] + (h * ffavg_[i]);
-            }
+            // Compute error vector:
+            _dynorb_rvcopy(sys_size, yy, ee);
+            _dynorb_raxpy(sys_size, -1.0, yy_pred, ee);
+            //_dynorb_rmprint(ee, sys_size, 1);
 
-            // Error calculation // TODO: remove fabs
-            err = fabs((yy2_[0] - yy2pred_[0]) / (yy2_[0] + DBL_EPSILON));
+            // Compute max absolute error
+            err = fabs(ee[0]);
             for (int i = 1; i < sys_size; ++i)
             {
-                real temp_err = fabs((yy2_[i] - yy2pred_[i]) / (yy2_[i] + DBL_EPSILON));
-                if (temp_err > err)
+                real abs_diff = fabs(ee[i]);
+
+                if (abs_diff > err)
                 {
-                    err = temp_err;
+                    err = abs_diff;
                 }
             }
 
-            iter++;
+            // Predictor step: Copy current corrected state to yy_pred
+            _dynorb_rvcopy(sys_size, yy, yy_pred);
+
+            printf("step %d | iter %d | err %f | tol %f\n", step, iter, err, tol);
+
+            // Increment iteration count
+            ++iter;
+
+            // Safety check for exceeding max iterations
+            if (iter >= rmax_iter)
+            {
+                printf("\nMaximum number of iterations: %d\n", rmax_iter);
+                printf("Exceeded at time: %f\n", t);
+                printf("In function '_dynorb_rheun'. \n\n");
+                break;
+            }
         }
 
-        if (iter > rmax_iter)
+        // Update integration time t += h;
+        t = (step + 1) * h;
+
+        // Store the results:
+        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+        tt[step] = t;
+
+        // Stop if the final time is exceeded
+        if (t >= t1)
         {
-            printf("\n Maximum number of iterations: %d\n", rmax_iter);
-            printf("Exceeded at time: %f\n", t1);
-            printf("In function '_dynorb_heun_'\n\n");
+            printf("\n_dynorb_rheun: Breaking from loop at t = %f [s]\n", t);
             break;
         }
-
-        // Update
-        t += h;
-        _dynorb_rvcopy(sys_size, yy2_, yy);
-        tt[step] = t;
-        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
-        step++;
     }
 }
+
+// void _dynorb_rrk45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
+// {
+//     printf("\nWARNING: Arrays sys->tt and sys->YY_t must be dynamically allocated to use this function.\n");
+//     printf("         Please make sure to configure using _dynorb_configure_dynamic.\n");
+//     printf("         If this is the case already, ignore this warning.\n\n");
+
+//     // Open up structures [TODO: remove these copies]
+//     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
+//     const void *odeParams = sys->odeParams;         // Pointer to odeParams
+//     const int sys_size = sys->sys_size;             // Size of System
+//     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
+//     real t0 = sys->t0;                              // Initial time
+//     real t1 = sys->t1;                              // Final time
+//     real *tt = sys->tt;                             // Time steps of solution
+//     real *YY_t = sys->YY_t;                         // Solution Array
+//     real h = solver_configuration->h;
+//     int n_steps = solver_configuration->n_steps;
+// }
 
 #endif // DYNORB_IMPLEMENTATION

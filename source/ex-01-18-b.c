@@ -101,7 +101,7 @@ int main(void)
     SimpHarmOscSys.YY_t = Y_tt;
 
     // Step 2: Perform Integration using custom RK method:
-    _dynorb_rk4(&SimpHarmOscSys, &solv_conf);
+    _dynorb_rrk4(&SimpHarmOscSys, &solv_conf);
 
     /* ==========================================================
      * DATA LOG: Save data

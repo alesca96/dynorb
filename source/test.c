@@ -23,22 +23,22 @@ int main(void)
 
     /* TEST: */
     {
-        const char *test_description = "Test: _dynorb_el";
+        const char *test_description = "Test: _dynorb_rel";
         printTestInfo(test_description, ++test_number);
 
         // Define a 3x2 matrix as a 1D array
         real A[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
         // Use the macro to access elements
-        printf("Element at (0, 0): %.3f\n", _dynorb_el(A, 3, 0, 0)); // 1
-        printf("Element at (1, 1): %.3f\n", _dynorb_el(A, 3, 1, 0)); // 2
-        printf("Element at (0, 1): %.3f\n", _dynorb_el(A, 3, 0, 1)); // 4
-        printf("Element at (2, 1): %.3f\n", _dynorb_el(A, 3, 2, 1)); // 6
+        printf("Element at (0, 0): %.3f\n", _dynorb_rel(A, 3, 0, 0)); // 1
+        printf("Element at (1, 1): %.3f\n", _dynorb_rel(A, 3, 1, 0)); // 2
+        printf("Element at (0, 1): %.3f\n", _dynorb_rel(A, 3, 0, 1)); // 4
+        printf("Element at (2, 1): %.3f\n", _dynorb_rel(A, 3, 2, 1)); // 6
     }
 
     /* TEST: */
     {
-        const char *test_description = "Test: _dynorb_col";
+        const char *test_description = "Test: _dynorb_rcol";
         printTestInfo(test_description, ++test_number);
 
         // Define a 3x3 matrix in column-major order
@@ -55,7 +55,7 @@ int main(void)
         real extracted_column[3];                  // Array to hold the extracted column
 
         // Call the function to extract the column
-        _dynorb_col(A, m, col_index, extracted_column);
+        _dynorb_rcol(A, m, col_index, extracted_column);
 
         // Check if the extracted column matches the expected column
         int pass = 1; // Flag to track if the test passes
@@ -71,17 +71,17 @@ int main(void)
         // Print the test result
         if (pass)
         {
-            printf("Test _dynorb_col PASSED!\n");
+            printf("Test _dynorb_rcol PASSED!\n");
         }
         else
         {
-            printf("Test _dynorb_col FAILED!\n");
+            printf("Test _dynorb_rcol FAILED!\n");
         }
     }
 
     /* TEST: */
     {
-        const char *test_description = "Test: _dynorb_row";
+        const char *test_description = "Test: _dynorb_rrow";
         printTestInfo(test_description, ++test_number);
 
         // Define a 3x3 matrix in column-major order
@@ -99,7 +99,7 @@ int main(void)
         real extracted_row[3];                  // Array to hold the extracted row
 
         // Call the function to extract the row
-        _dynorb_row(A, m, n, row_index, extracted_row);
+        _dynorb_rrow(A, m, n, row_index, extracted_row);
 
         // Check if the extracted row matches the expected row
         int pass = 1; // Flag to track if the test passes
@@ -115,11 +115,11 @@ int main(void)
         // Print the test result
         if (pass)
         {
-            printf("Test _dynorb_row PASSED!\n");
+            printf("Test _dynorb_rrow PASSED!\n");
         }
         else
         {
-            printf("Test _dynorb_row FAILED!\n");
+            printf("Test _dynorb_rrow FAILED!\n");
         }
     }
 
@@ -210,7 +210,7 @@ int main(void)
         {
             for (int j = 0; j < src_cols; ++j)
             {
-                if (fabs(_dynorb_el(src_M, src_rows, i, j) - _dynorb_el(dst_M1, src_rows, i, j)) < 1.e-12)
+                if (fabs(_dynorb_rel(src_M, src_rows, i, j) - _dynorb_rel(dst_M1, src_rows, i, j)) < 1.e-12)
                 {
                     printf("Elements at position (%d, %d) are equal.\n", i, j);
                 }
