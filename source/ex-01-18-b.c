@@ -87,7 +87,7 @@ int main(void)
     int sys_size = 2;           // Size of odeSys
     real t0 = 0.0;              // Initial Time
     real t1 = 110.0;            // Final Time
-    real h = 0.1;               // Time step
+    real h = 2.0;               // Time step
 
     // Confugure (statically)
     _dynorb_configure_static(&SimpHarmOscSys, &solv_conf,
@@ -136,7 +136,7 @@ int main(void)
         "set title 'Example 18 Chapter 01: Simple Harmonic Oscillator using Custom RK4'\n"
         "set xlabel 'Time t [s]'\n"
         "set ylabel 'x(t) [m], v(t) [m/s], x_a(t) [m]'\n"
-        "plot './data/ex_01_18-b.txt' using 1:2 with points pt 7 ps 0.5 lc rgb 'red' title 'x(t)', "
+        "plot './data/ex_01_18-b.txt' using 1:2 with lines lc rgb 'red' title 'x(t)', "
         "'./data/ex_01_18-b.txt' using 1:3 with points pt 7 ps 0.5 lc rgb 'blue' title 'v(t)', "
         "'./data/ex_01_18-b.txt' using 1:4 with lines lc rgb 'black' title 'x_a(t)'\n";
 

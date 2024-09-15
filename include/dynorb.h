@@ -192,24 +192,33 @@ void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *s
                                const int sys_size, const real t0, const real t1, const real h);
 
 /**
- * @brief Configures an ODE system assuming stack memory allocation.
+ * @brief Configures an ODE (Ordinary Differential Equation) system assuming stack memory allocation.
  *
- * This function initializes the ODE system for solving with stack memory
- * allocation. It computes the number of steps and provides instructions
- * for manually allocating stack memory in the user's code.
+ * This function sets up an ODE system for solving using stack memory allocation. It calculates the
+ * number of steps required and provides guidelines for manually allocating memory on the stack within
+ * the user's code. The function does not perform memory allocation itself but instead assumes that the
+ * user will handle it. To manually allocate memory on the stack for the ODE system, include the following lines in your code:
+ *
+ * - real tt[solver_configuration.n_steps];
+ *
+ * - real YY_t[solver_configuration.n_steps * ode_system.sys_size];
+ *
+ * - ode_system.tt = tt;
+ *
+ * - ode_system.YY_t = YY_t;
  *
  * @param[in] ode_system Pointer to the structure defining the ODE system.
  * @param[in] solver_configuration Pointer to the solver configuration structure.
- * @param[in] ode_function Pointer to the ODE function to be solved.
- * @param[in] odeParams Pointer to any additional parameters for the ODE function.
+ * @param[in] ode_function Pointer to the ODE function that needs to be solved.
+ * @param[in] odeParams Pointer to any additional parameters needed by the ODE function.
  * @param[in] yy0 Pointer to the initial conditions of the system.
- * @param[in] sys_size Size of the system (number of state variables).
+ * @param[in] sys_size The size of the system (i.e., the number of state variables).
  * @param[in] t0 Initial time of the simulation.
  * @param[in] t1 Final time of the simulation.
- * @param[in] h Time step size.
+ * @param[in] h The time step size.
  *
- * This function uses a column-major convention.
- * This function assumes that the user will allocate stack memory in their code.
+ * This function assumes the use of a column-major ordering for matrix data.
+ * Stack memory allocation is expected to be handled by the user, as demonstrated in the code block above.
  *
  * @return[out] void
  */
@@ -522,7 +531,7 @@ void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *s
                                const int sys_size, const real t0, const real t1, const real h)
 {
     // Compute (initial) number of steps:
-    int n_steps = (int)((((t1 - t0)) / h) + 1.0);
+    int n_steps = ceil(((t1 - t0) / h)); // int n_steps = (int)((((t1 - t0)) / h) + 1.0);
 
     // Allocate memory for the time steps and solution array
     ode_system->tt = (real *)malloc(n_steps * sizeof(real));
@@ -573,16 +582,11 @@ void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *so
                               const int sys_size, const real t0, const real t1, const real h)
 {
     // Compute (initial) number of steps:
-    int n_steps = (int)((((t1 - t0)) / h) + 1.0);
+    int n_steps = ceil(((t1 - t0) / h)); // int n_steps = (int)((((t1 - t0)) / h) + 1.0);
 
     // Print stack memory allocation instructions
     ode_system->tt = NULL;
     ode_system->YY_t = NULL;
-    printf("\nFor Stack Memory Allocation add these lines to your code:\n");
-    printf("    real tt[solver_configuration.n_steps];\n");
-    printf("    real YY_t[solver_configuration.n_steps * ode_system.sys_size];\n");
-    printf("    ode_system.tt = tt;\n");
-    printf("    ode_system.YY_t = YY_t;\n\n");
 
     // Copy values in ode_system structure:
     ode_system->odeFunction = ode_function;
@@ -621,11 +625,8 @@ void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 
     //  RK1 (Euler)
     const int n_stages = 1;
-    real a = 0.0; // Note: a is [1 x 1]
-    // real b = 1.0; // Note: b is [1 x 1]
-    real c = 1.0; // Note: c is [1 x 1]
 
-    // Allocate Memory for Current State, Inner State:
+    // Allocate Memory for Current State:
     real yy[sys_size];
     _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
@@ -638,41 +639,30 @@ void _dynorb_rk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     // Numerical Integration:
     for (int step = 0; step < n_steps; ++step)
     {
-        // Evaluate Time Derivatives in [t, t+h]
-        real t_inner = t + a * h;
-        odeFunction(t_inner, yy, odeParams, ff);
+        // Evaluate Time Derivatives at time instant t:
+        odeFunction(t, yy, odeParams, ff);
 
-        // Update the state:
-        for (int k = 0; k < sys_size; ++k)
-        {
-            for (int i = 0; i < n_stages; ++i)
-            {
-                yy[k] += h * c * ff[k];
-            }
-        }
+        // Update state: Vector Sum: yy = alpha*xx + yy
+        _dynorb_raxpy(sys_size, h, ff, yy);
 
         // Update Integration Time:
-        t += h;
+        t = (step + 1) * h; // t += h;
 
         // Store results:
+        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+        tt[step] = t;
+
         if (t > t1)
         {
-            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
-            tt[step] = t;
-            printf("_dynorb_rk1 : Breaking From Loop<t = %f [s]>", t);
+            printf("\n_dynorb_rk1: Breaking From Loop at <t = %f [s]>", t);
             break;
-        }
-        else
-        {
-            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
-            tt[step] = t;
         }
     }
 }
 
 void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
-    // Open up _dynorb_odeSys [TODO: remove this]
+    // Open up structures [TODO: remove these copies]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
     const void *odeParams = sys->odeParams;         // Pointer to odeParams
     const int sys_size = sys->sys_size;             // Size of System
@@ -681,83 +671,51 @@ void _dynorb_rk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     real t1 = sys->t1;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
-
-    // Open up _dynorb_solvConf [TODO: remove this]
     const real h = solver_configuration->h;
     const int n_steps = solver_configuration->n_steps;
-
-    //  RK2 (Heun)
-    const int n_stages = 2;
-    real a[2] = {0.0, 0.0}; // Note: a is [1 x 2]
-    real b[2] = {0.0, 0.0}; // Note: b is [2 x 1]
-    real c[2] = {0.0, 0.0}; // Note: c is [2 x 1]
-    a[1] = 1.0;
-    b[0] = 0.0;
-    b[1] = 1.0;
-    c[0] = 0.5;
-    c[1] = 0.5;
 
     // Allocate Memory for Current State, Inner State:
     real yy[sys_size];
     real yy_inner[sys_size];
-    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
-
-    // Allocate Memory for derivatives at each stage:
-    real ff[sys_size * n_stages];
+    real ff1_[sys_size];
+    real ff2_[sys_size];
+    real ff1_plus_ff2_[sys_size];
 
     // Integration Time Instant:
     real t = t0;
+    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
     // Numerical Integration:
     for (int step = 0; step < n_steps; ++step)
     {
-        // Evaluate Time Derivatives at 'n_stages' points in [t, t+h]
-        for (int i = 0; i < n_stages; ++i)
-        {
-            real t_inner = t + a[i] * h;
-            _dynorb_rvcopy(sys_size, yy, yy_inner);
-
-            for (int j = 0; j < i; ++j)
-            {
-                for (int k = 0; k < sys_size; ++k)
-                {
-                    yy_inner[k] += h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
-                }
-            }
-            odeFunction(t_inner, yy_inner, odeParams, &ff[i * sys_size]);
-        }
-
-        // Update the state:
-        for (int k = 0; k < sys_size; ++k)
-        {
-            for (int i = 0; i < n_stages; ++i)
-            {
-                yy[k] += h * c[i] * ff[i * sys_size + k];
-            }
-        }
-
+        // Evaluate Time Derivatives at time 1 = t
+        odeFunction(t, yy, odeParams, ff1_);
+        // Evaluate Time Derivatives at time 2 = t+h
+        _dynorb_rvcopy(sys_size, yy, yy_inner);
+        _dynorb_raxpy(sys_size, h, ff1_, yy_inner);
+        odeFunction((t + h), yy_inner, odeParams, ff2_);
+        // Update state yy:
+        _dynorb_rscal(sys_size, 0.5, ff1_);
+        _dynorb_rvcopy(sys_size, ff1_, ff1_plus_ff2_);
+        _dynorb_raxpy(sys_size, 0.5, ff2_, ff1_plus_ff2_);
+        _dynorb_raxpy(sys_size, h, ff1_plus_ff2_, yy);
         // Update Integration Time:
-        t += h;
-
+        t = (step + 1) * h; // t += h;
         // Store results:
+        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+        tt[step] = t;
+        // Safety check:
         if (t > t1)
         {
-            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
-            tt[step] = t;
-            printf("_dynorb_rk2 : Breaking From Loop<t = %f [s]>", t);
+            printf("\n_dynorb_rk2: Breaking From Loop at <t = %f [s]>", t);
             break;
-        }
-        else
-        {
-            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
-            tt[step] = t;
         }
     }
 }
 
 void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
-    // Open up _dynorb_odeSys [TODO: remove this]
+    // Open up structures [TODO: remove these copies]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
     const void *odeParams = sys->odeParams;         // Pointer to odeParams
     const int sys_size = sys->sys_size;             // Size of System
@@ -766,88 +724,63 @@ void _dynorb_rk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     real t1 = sys->t1;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
-
-    // Open up _dynorb_solvConf [TODO: remove this]
     const real h = solver_configuration->h;
     const int n_steps = solver_configuration->n_steps;
-
-    //  RK3
-    const int n_stages = 3;
-    real a[3];     // Note: a is [1 x 3]
-    real b[3 * 2]; // Note: b is [3 x 2]
-    real c[3];     // Note: c is [3 x 1]
-    a[0] = 0.0;
-    a[1] = 0.5;
-    a[2] = 1.0;
-    b[0] = 0.0;
-    b[1] = 0.0;
-    b[2] = 0.5;
-    b[3] = 0.0;
-    b[4] = -1.0;
-    b[5] = 2.0;
-    c[0] = 1.0 / 6;
-    c[1] = 2.0 / 3;
 
     // Allocate Memory for Current State, Inner State:
     real yy[sys_size];
     real yy_inner[sys_size];
-    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
-
-    // Allocate Memory for derivatives at each stage:
-    real ff[sys_size * n_stages];
+    real ff1_[sys_size];
+    real ff2_[sys_size];
+    real ff3_[sys_size];
+    real two_ff2_[sys_size];
+    real minus_ff1_plus_two_ff2_[sys_size];
 
     // Integration Time Instant:
     real t = t0;
+    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
     // Numerical Integration:
     for (int step = 0; step < n_steps; ++step)
     {
-        // Evaluate Time Derivatives at 'n_stages' points in [t, t+h]
-        for (int i = 0; i < n_stages; ++i)
-        {
-            real t_inner = t + a[i] * h;
-            _dynorb_rvcopy(sys_size, yy, yy_inner);
-            for (int j = 0; j < i; ++j)
-            {
-                for (int k = 0; k < sys_size; ++k)
-                {
-                    yy_inner[k] += h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
-                }
-            }
-            odeFunction(t_inner, yy_inner, odeParams, &ff[i * sys_size]);
-        }
-
-        // Update the state:
-        for (int k = 0; k < sys_size; ++k)
-        {
-            for (int i = 0; i < n_stages; ++i)
-            {
-                yy[k] += h * c[i] * ff[i * sys_size + k];
-            }
-        }
+        // Evaluate Time Derivatives at time 1 = t
+        odeFunction(t, yy, odeParams, ff1_);
+        // Evaluate Time Derivatives at time 2 = t+(0.5*h)
+        _dynorb_rvcopy(sys_size, yy, yy_inner);
+        _dynorb_raxpy(sys_size, (0.5 * h), ff1_, yy_inner);
+        odeFunction((t + (0.5 * h)), yy_inner, odeParams, ff2_);
+        // Evaluate Time Derivatives at time 3 = t+h
+        _dynorb_rvcopy(sys_size, yy, yy_inner);
+        _dynorb_rvcopy(sys_size, ff2_, two_ff2_);
+        _dynorb_rscal(sys_size, 2.0, two_ff2_);
+        _dynorb_rvcopy(sys_size, two_ff2_, minus_ff1_plus_two_ff2_);
+        _dynorb_raxpy(sys_size, -1.0, ff1_, minus_ff1_plus_two_ff2_);
+        _dynorb_raxpy(sys_size, h, minus_ff1_plus_two_ff2_, yy_inner);
+        odeFunction((t + h), yy_inner, odeParams, ff3_);
+        // Update state yy:
+        _dynorb_rscal(sys_size, (1.0 / 3.0), two_ff2_);
+        _dynorb_raxpy(sys_size, (1.0 / 6.0), ff3_, two_ff2_);
+        _dynorb_raxpy(sys_size, (1.0 / 6.0), ff1_, two_ff2_);
+        _dynorb_raxpy(sys_size, h, two_ff2_, yy);
 
         // Update Integration Time:
-        t += h;
+        t = (step + 1) * h; // t += h;
 
         // Store results:
+        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+        tt[step] = t;
+
         if (t > t1)
         {
-            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
-            tt[step] = t;
-            printf("_dynorb_rk3 : Breaking From Loop<t = %f [s]>", t);
+            printf("\n_dynorb_rk3: Breaking From Loop at <t = %f [s]>", t);
             break;
-        }
-        else
-        {
-            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
-            tt[step] = t;
         }
     }
 }
 
 void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 {
-    // Open up _dynorb_odeSys [TODO: remove this]
+    // Open up structures [TODO: remove these copies]
     _dynorb_odeFun *odeFunction = sys->odeFunction; // Pointer to _dynorb_odeFun
     const void *odeParams = sys->odeParams;         // Pointer to odeParams
     const int sys_size = sys->sys_size;             // Size of System
@@ -856,90 +789,56 @@ void _dynorb_rk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     real t1 = sys->t1;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
-
-    // Open up _dynorb_solvConf [TODO: remove this]
     const real h = solver_configuration->h;
     const int n_steps = solver_configuration->n_steps;
-
-    //  RK4 (Runge-Kutta)
-    const int n_stages = 4;
-    real a[4];     // Note: a is [1 x 4]
-    real b[4 * 3]; // Note: b is [4 x 3]
-    real c[4];     // Note: c is [4 x 1]
-    a[0] = 0.0;
-    a[1] = 0.5;
-    a[2] = 0.5;
-    a[3] = 1.0;
-    b[0] = 0.0;
-    b[1] = 0.0;
-    b[2] = 0.0;
-    b[3] = 0.5;
-    b[4] = 0.0;
-    b[5] = 0.0;
-    b[6] = 0.0;
-    b[7] = 0.5;
-    b[8] = 0.0;
-    b[9] = 0.0;
-    b[10] = 0.0;
-    b[11] = 1.0;
-    c[0] = 1.0 / 6;
-    c[1] = 1.0 / 3;
-    c[2] = 1.0 / 3;
-    c[3] = 1.0 / 6;
 
     // Allocate Memory for Current State, Inner State:
     real yy[sys_size];
     real yy_inner[sys_size];
-    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
-
-    // Allocate Memory for derivatives at each stage:
-    real ff[sys_size * n_stages];
+    real ff1_[sys_size];
+    real ff2_[sys_size];
+    real ff3_[sys_size];
+    real ff4_[sys_size];
 
     // Integration Time Instant:
     real t = t0;
+    _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
     // Numerical Integration:
     for (int step = 0; step < n_steps; ++step)
     {
-        // Evaluate Time Derivatives at 'n_stages' points in [t, t+h]
-        for (int i = 0; i < n_stages; ++i)
-        {
-            real t_inner = t + a[i] * h;
-            _dynorb_rvcopy(sys_size, yy, yy_inner);
-            for (int j = 0; j < i; ++j)
-            {
-                for (int k = 0; k < sys_size; ++k)
-                {
-                    yy_inner[k] += h * b[i * (n_stages - 1) + j] * ff[j * sys_size + k];
-                }
-            }
-            odeFunction(t_inner, yy_inner, odeParams, &ff[i * sys_size]);
-        }
-
-        // Update the state:
-        for (int k = 0; k < sys_size; ++k)
-        {
-            for (int i = 0; i < n_stages; ++i)
-            {
-                yy[k] += h * c[i] * ff[i * sys_size + k];
-            }
-        }
+        // Evaluate Time Derivatives at time 1 = t
+        odeFunction(t, yy, odeParams, ff1_);
+        // Evaluate Time Derivatives at time 2 = t+(0.5*h)
+        _dynorb_rvcopy(sys_size, yy, yy_inner);
+        _dynorb_raxpy(sys_size, (0.5 * h), ff1_, yy_inner);
+        odeFunction((t + (0.5 * h)), yy_inner, odeParams, ff2_);
+        // Evaluate Time Derivatives at time 3 = t+(0.5*h)
+        _dynorb_rvcopy(sys_size, yy, yy_inner);
+        _dynorb_raxpy(sys_size, (0.5 * h), ff2_, yy_inner);
+        odeFunction((t + (0.5 * h)), yy_inner, odeParams, ff3_);
+        // Evaluate Time Derivatives at time 4 = t+h
+        _dynorb_rvcopy(sys_size, yy, yy_inner);
+        _dynorb_raxpy(sys_size, h, ff3_, yy_inner);
+        odeFunction((t + h), yy_inner, odeParams, ff4_);
+        // Update state yy:
+        _dynorb_rscal(sys_size, (1.0 / 6.0), ff4_);
+        _dynorb_raxpy(sys_size, (1.0 / 3.0), ff3_, ff4_);
+        _dynorb_raxpy(sys_size, (1.0 / 3.0), ff2_, ff4_);
+        _dynorb_raxpy(sys_size, (1.0 / 6.0), ff1_, ff4_);
+        _dynorb_raxpy(sys_size, h, ff4_, yy);
 
         // Update Integration Time:
-        t += h;
+        t = (step + 1) * h; // t += h;
 
         // Store results:
+        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
+        tt[step] = t;
+
         if (t > t1)
         {
-            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
-            tt[step] = t;
-            printf("_dynorb_rk4 : Breaking From Loop<t = %f [s]>", t);
+            printf("\n_dynorb_rk3: Breaking From Loop at <t = %f [s]>", t);
             break;
-        }
-        else
-        {
-            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
-            tt[step] = t;
         }
     }
 }
