@@ -23,17 +23,104 @@ int main(void)
 
     /* TEST: */
     {
-        const char *test_description = "Test MACRO: _dynorb_EL";
+        const char *test_description = "Test: _dynorb_el";
         printTestInfo(test_description, ++test_number);
 
         // Define a 3x2 matrix as a 1D array
         real A[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
         // Use the macro to access elements
-        printf("Element at (0, 0): %.3f\n", _dynorb_EL(A, 3, 2, 0, 0)); // 1
-        printf("Element at (1, 1): %.3f\n", _dynorb_EL(A, 3, 2, 1, 0)); // 2
-        printf("Element at (0, 1): %.3f\n", _dynorb_EL(A, 3, 2, 0, 1)); // 4
-        printf("Element at (1, 2): %.3f\n", _dynorb_EL(A, 3, 2, 2, 1)); // 6
+        printf("Element at (0, 0): %.3f\n", _dynorb_el(A, 3, 0, 0)); // 1
+        printf("Element at (1, 1): %.3f\n", _dynorb_el(A, 3, 1, 0)); // 2
+        printf("Element at (0, 1): %.3f\n", _dynorb_el(A, 3, 0, 1)); // 4
+        printf("Element at (2, 1): %.3f\n", _dynorb_el(A, 3, 2, 1)); // 6
+    }
+
+    /* TEST: */
+    {
+        const char *test_description = "Test: _dynorb_col";
+        printTestInfo(test_description, ++test_number);
+
+        // Define a 3x3 matrix in column-major order
+        real A[9] = {
+            1.0, 4.0, 7.0, // Column 1
+            2.0, 5.0, 8.0, // Column 2
+            3.0, 6.0, 9.0  // Column 3
+        };
+
+        int m = 3;         // number of rows
+        int col_index = 1; // Extract the 2nd column (index 1)
+
+        real expected_column[3] = {2.0, 5.0, 8.0}; // Expected values for column 2
+        real extracted_column[3];                  // Array to hold the extracted column
+
+        // Call the function to extract the column
+        _dynorb_col(A, m, col_index, extracted_column);
+
+        // Check if the extracted column matches the expected column
+        int pass = 1; // Flag to track if the test passes
+        for (int i = 0; i < m; i++)
+        {
+            if (extracted_column[i] != expected_column[i])
+            {
+                pass = 0;
+                break;
+            }
+        }
+
+        // Print the test result
+        if (pass)
+        {
+            printf("Test _dynorb_col PASSED!\n");
+        }
+        else
+        {
+            printf("Test _dynorb_col FAILED!\n");
+        }
+    }
+
+    /* TEST: */
+    {
+        const char *test_description = "Test: _dynorb_row";
+        printTestInfo(test_description, ++test_number);
+
+        // Define a 3x3 matrix in column-major order
+        real A[9] = {
+            1.0, 4.0, 7.0, // Column 1
+            2.0, 5.0, 8.0, // Column 2
+            3.0, 6.0, 9.0  // Column 3
+        };
+
+        int m = 3;         // number of rows
+        int n = 3;         // number of columns
+        int row_index = 1; // Extract the 2nd row (index 1)
+
+        real expected_row[3] = {4.0, 5.0, 6.0}; // Expected values for row 2
+        real extracted_row[3];                  // Array to hold the extracted row
+
+        // Call the function to extract the row
+        _dynorb_row(A, m, n, row_index, extracted_row);
+
+        // Check if the extracted row matches the expected row
+        int pass = 1; // Flag to track if the test passes
+        for (int j = 0; j < n; j++)
+        {
+            if (extracted_row[j] != expected_row[j])
+            {
+                pass = 0;
+                break;
+            }
+        }
+
+        // Print the test result
+        if (pass)
+        {
+            printf("Test _dynorb_row PASSED!\n");
+        }
+        else
+        {
+            printf("Test _dynorb_row FAILED!\n");
+        }
     }
 
     /* TEST: */
@@ -123,7 +210,7 @@ int main(void)
         {
             for (int j = 0; j < src_cols; ++j)
             {
-                if (fabs(_dynorb_EL(src_M, src_rows, src_cols, i, j) - _dynorb_EL(dst_M1, src_rows, src_cols, i, j)) < 1.e-12)
+                if (fabs(_dynorb_el(src_M, src_rows, i, j) - _dynorb_el(dst_M1, src_rows, i, j)) < 1.e-12)
                 {
                     printf("Elements at position (%d, %d) are equal.\n", i, j);
                 }

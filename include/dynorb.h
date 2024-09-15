@@ -60,7 +60,6 @@ const bool real_is_double = 0;
 #endif
 
 /* MACROS: */
-#define _dynorb_EL(M, m, n, i, j) M[(j * (m)) + i]
 
 /* ODE FUNCTION: */
 typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *odeParams, real *dyydt);
@@ -105,6 +104,52 @@ void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy);
 void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const int src_start_i, const int src_start_j, const int cpy_m, const int cpy_n, real *dst_B, const int dst_m, const int dst_n, const int dst_start_i, const int dst_start_j);
 
 /* CORE FUNCTIONS: */
+
+/**
+ * @brief Extracts a column from a matrix stored in column-major order.
+ *
+ * This function extracts the column at index `j` from the matrix `A` (stored in
+ * column-major order) and stores it in the array `column`.
+ *
+ * @param[in] A Pointer to the matrix data (stored in column-major order).
+ * @param[in] m Number of rows in the matrix.
+ * @param[in] j Column index to extract.
+ * @param[out] column Array to store the extracted column (size should be `m`).
+ *
+ * @return[out] void
+ */
+void _dynorb_col(const real *A, int m, int j, real *column);
+
+/**
+ * @brief Extracts a row from a matrix stored in column-major order.
+ *
+ * This function extracts the row at index `i` from the matrix `A` (stored in
+ * column-major order) and stores it in the array `row`.
+ *
+ * @param[in] A Pointer to the matrix data (stored in column-major order).
+ * @param[in] m Number of rows in the matrix.
+ * @param[in] n Number of columns in the matrix.
+ * @param[in] i Row index to extract.
+ * @param[out] row Array to store the extracted row (size should be `n`).
+ *
+ * @return[out] void
+ */
+void _dynorb_row(const real *A, int m, int n, int i, real *row);
+
+/**
+ * @brief Accesses an element from a matrix stored in column-major order.
+ *
+ * This function retrieves the element at position (i, j) from a matrix `M`
+ * stored in column-major order.
+ *
+ * @param[in] M Pointer to the matrix data (assumed to be stored in column-major order).
+ * @param[in] m Number of rows in the matrix.
+ * @param[in] i Row index of the element.
+ * @param[in] j Column index of the element.
+ *
+ * @return[out] real The value at the (i, j) position in the matrix.
+ */
+static inline real _dynorb_el(const real *A, int m, int i, int j);
 
 /**
  * @brief Frees dynamically allocated memory in the ODE system.
@@ -424,7 +469,7 @@ void _dynorb_rmprint(const real *A, const int m, const int n)
         printf("    ");
         for (int j = 0; j < n; ++j)
         {
-            printf("%.4f", _dynorb_EL(A, m, n, i, j));
+            printf("%.4f", _dynorb_el(A, m, i, j));
             if (j < n - 1)
             {
                 printf(", ");
@@ -444,6 +489,28 @@ void _dynorb_rvfill(real *xx, const int n, const real a)
 }
 
 /* CORE FUNCTIONS: */
+
+void _dynorb_col(const real *A, int m, int j, real *column)
+{
+    for (int i = 0; i < m; i++)
+    {
+        column[i] = _dynorb_el(A, m, i, j); // Accessing element A[i, j]
+    }
+}
+
+void _dynorb_row(const real *A, int m, int n, int i, real *row)
+{
+    for (int j = 0; j < n; j++)
+    {
+        row[j] = _dynorb_el(A, m, i, j); // Accessing element A[i, j]
+    }
+}
+
+static inline real _dynorb_el(const real *A, int m, int i, int j)
+{
+    return A[(j * m) + i];
+}
+
 void _dynorb_free(_dynorb_odeSys *ode_system)
 {
     free(ode_system->tt);
