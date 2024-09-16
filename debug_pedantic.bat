@@ -4,7 +4,8 @@
 @echo off
 
 :: Prompt the user for the source file name (with extension)
-set /p sourcefile=Enter the name of the source file (with extension, e.g., test.c): 
+::set /p sourcefile=Enter the name of the source file (with extension, e.g., test.c): 
+set sourcefile=ex-01-19-b.c
 
 :: Create the target directory if it doesn't exist
 if not exist .\bin\debug (
