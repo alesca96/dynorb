@@ -85,8 +85,8 @@ int main(void)
     real yy0[2] = {x0, x_dot0}; // Initial State
     int sys_size = 2;           // Size of odeSys
     real t0 = 0.0;              // Initial Time
-    real t1 = 5.0;              // Final Time
-    real h = 0.001;             // Time step
+    real t1 = 110.0;            // Final Time
+    real h = 0.01;              // Time step
 
     // Confugure (dynamically)
     _dynorb_configure_dynamic(&SimpHarmOscSys, &solv_conf,
@@ -94,9 +94,7 @@ int main(void)
                               sys_size, t0, t1, h);
 
     // Step 3: Perform Integration using custom RK method:
-    const real tol = 1.e-6;
-    // const int max_iter = 100;
-    // _dynorb_rheun(&SimpHarmOscSys, &solv_conf, tol, max_iter);
+    const real tol = 1.e-3;
     _dynorb_rrkf45(&SimpHarmOscSys, &solv_conf, tol);
 
     /* ==========================================================
@@ -120,10 +118,8 @@ int main(void)
         fprintf(outfile, "%.10f %.10f %.10f %.10f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size + 1], x_a);
     }
 
-    printf("FILE GENERATED\n");
-
     // Free Memory and Closing the file:
-    // _dynorb_free(&SimpHarmOscSys);
+    _dynorb_free(&SimpHarmOscSys);
     fclose(outfile);
 
     /* ==========================================================

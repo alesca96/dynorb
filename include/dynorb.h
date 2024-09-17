@@ -1003,6 +1003,9 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
     real h = solver_configuration->h;               // Initial step
     int n_steps = solver_configuration->n_steps;
 
+    // Number of stages:
+    int n_stages = 6;
+
     // Coefficients:
     real a[6] = {0.0, 1.0 / 4.0, 3.0 / 8.0, 12.0 / 13.0, 1.0, 1.0 / 2.0};
     real b[36] = {
@@ -1022,12 +1025,7 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
     real yyi_[sys_size];
     real yy_inner[sys_size];
     real ee[sys_size]; // Truncation error vector
-    real ff1_[sys_size];
-    real ff2_[sys_size];
-    real ff3_[sys_size];
-    real ff4_[sys_size];
-    real ff5_[sys_size];
-    real ff6_[sys_size];
+    real FF_[sys_size * n_stages];
 
     // Allocate memory for scalars:
     real t;
@@ -1046,93 +1044,85 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
 
     while (t < t1)
     {
-        printf("\n\nBegin time step t = %f | h = %f\n", t, h);
-        hmin = 16.0 * (_dynorb_eps(t)); // Update hmin
+        // printf("\n\nBegin time step t = %f | h = %f\n", t, h);
+        hmin = 1.e-6; // 16.0 * (_dynorb_eps(t)); // Update hmin
         ti = t;
         _dynorb_rvcopy(sys_size, yy, yyi_);
-        // Evaluate time derivatives at stage 1:
-        t_inner = ti;
-        _dynorb_rvcopy(sys_size, yyi_, yy_inner); // yy_inner = yyi_
-        odeFunction(t_inner, yy_inner, odeParams, ff1_);
-
-        // Evaluate time derivatives at stage 2:
-        t_inner = ti + (a[1] * h);
-        _dynorb_rvcopy(sys_size, yyi_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 1, 0)), ff1_, yy_inner); // yy_inner = yyi_ + b(2,1)*ff1_
-        odeFunction(t_inner, yy_inner, odeParams, ff2_);
-
-        // Evaluate time derivatives at stage 3:
-        t_inner = ti + (a[2] * h);
-        _dynorb_rvcopy(sys_size, yyi_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 2, 0)), ff1_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 2, 1)), ff2_, yy_inner); // yy_inner = yyi_ + b(3,1)*ff1_ + b(3,2)*ff2_
-        odeFunction(t_inner, yy_inner, odeParams, ff3_);
-
-        // Evaluate time derivatives at stage 4:
-        t_inner = ti + (a[3] * h);
-        _dynorb_rvcopy(sys_size, yyi_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 3, 0)), ff1_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 3, 1)), ff2_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 3, 2)), ff3_, yy_inner); // yy_inner = yyi_ + b(4,1)*ff1_ + b(4,2)*ff2_ + b(4,3)*ff3_
-        odeFunction(t_inner, yy_inner, odeParams, ff4_);
-
-        // Evaluate time derivatives at stage 5:
-        t_inner = ti + (a[4] * h);
-        _dynorb_rvcopy(sys_size, yyi_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 4, 0)), ff1_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 4, 1)), ff2_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 4, 2)), ff3_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 4, 3)), ff4_, yy_inner); // yy_inner = yyi_ + b(5,1)*ff1_ + b(5,2)*ff2_ + b(5,3)*ff3_ + b(5,4)*ff4_
-        odeFunction(t_inner, yy_inner, odeParams, ff5_);
-
-        // Evaluate time derivatives at stage 6:
-        t_inner = ti + (a[5] * h);
-        _dynorb_rvcopy(sys_size, yyi_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 5, 0)), ff1_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 5, 1)), ff2_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 5, 2)), ff3_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 5, 3)), ff4_, yy_inner);
-        _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, 6, 5, 4)), ff4_, yy_inner); // yy_inner = yyi_ + b(6,1)*ff1_ + b(6,2)*ff2_ + b(6,3)*ff3_ + b(6,4)*ff4_ + b(6,5)*ff5_
-        odeFunction(t_inner, yy_inner, odeParams, ff6_);
+        // Evaluate time derivatives at stage i:
+        for (int i = 0; i < n_stages; ++i)
+        {
+            // Stage i: t_inner and yy_inner
+            t_inner = ti + (a[0] * h);
+            _dynorb_rvcopy(sys_size, yyi_, yy_inner); // yy_inner = yyi_
+            for (int j = 0; j < i; ++j)
+            {
+                _dynorb_raxpy(sys_size, (h * _dynorb_rel(b, n_stages, i, j)), &FF_[sys_size * j], yy_inner); // yy_inner = yyi_ + b(2,1)*ff1_
+            }
+            //
+            odeFunction(t_inner, yy_inner, odeParams, &FF_[sys_size * i]);
+        }
 
         // Truncation Error Vector:
-        _dynorb_rvcopy(sys_size, ff1_, ee);
+        _dynorb_rvcopy(sys_size, &FF_[0], ee);
         _dynorb_rscal(sys_size, (c[0] - c_star[0]), ee);
-        _dynorb_raxpy(sys_size, (c[1] - c_star[1]), ff2_, ee);
-        _dynorb_raxpy(sys_size, (c[2] - c_star[2]), ff3_, ee);
-        _dynorb_raxpy(sys_size, (c[3] - c_star[3]), ff4_, ee);
-        _dynorb_raxpy(sys_size, (c[4] - c_star[4]), ff5_, ee);
-        _dynorb_raxpy(sys_size, (c[5] - c_star[5]), ff6_, ee);
+        for (int i = 1; i < n_stages; ++i)
+        {
+            _dynorb_raxpy(sys_size, (c[i] - c_star[i]), &FF_[sys_size * i], ee);
+        }
         _dynorb_rscal(sys_size, h, ee);
-
-        // Maximum Truncation Error:
+        // Maximum Component of Truncation Error:
         trunc_err_max = _dynorb_max_abs_component(sys_size, ee);
+
         // Allowable Truncation Error:
         trunc_err_allowed = _dynorb_max_abs_component(sys_size, yy);
         trunc_err_allowed = tol * _dynorb_rmax(trunc_err_allowed, 1.0);
-        // Fractional Change in step-size:
-        delta = (real)pow((trunc_err_allowed / (trunc_err_max + DBL_EPSILON)), (1 / 5)); // COULD GIVE PRROBLEMS float/double
 
-        // If truncation error is within bound --> update solution:
-        if (trunc_err_max <= trunc_err_allowed)
+        // If truncation error is out bound --> update h:
+        if (trunc_err_max > trunc_err_allowed)
         {
+            printf("Maximum truncation error = %f\n", trunc_err_max);
+            printf("Allowed Truncation error = %f\n", trunc_err_allowed);
+            // Fractional Change in step-size:
+            delta = (real)(pow((trunc_err_allowed / (trunc_err_max + DBL_EPSILON)), (1 / 5))); // COULD GIVE PRROBLEMS float/double
+            delta *= 0.8;
+            printf("Fractional change in step-size: delta = %f\n", delta);
+
+            // Update time step :
+            printf("Step size before: h = %f\n", h);
+            h = _dynorb_rmin(delta * h, 4.0 * h);
+            printf("Step size after: h = %f\n", h);
+            if (h < hmin)
+            {
+                printf("\n\n Warning: Step size (h = %.10f) fell below\n", h);
+                printf("its minimum allowable value (hmin = %.10f) at time %f.\n\n", hmin, t);
+                // break;
+            }
+        }
+        else // Update solution
+        {
+            // Safety check:
             h = _dynorb_rmin(h, (t1 - t));
+            // Update Time
             t += h;
+
             // Compute updated solution
-            _dynorb_rvcopy(sys_size, ff1_, yy);
+            _dynorb_rvcopy(sys_size, &FF_[0], yy);
             _dynorb_rscal(sys_size, c[0], yy);
-            _dynorb_raxpy(sys_size, c[1], ff2_, yy);
-            _dynorb_raxpy(sys_size, c[2], ff3_, yy);
-            _dynorb_raxpy(sys_size, c[3], ff4_, yy);
-            _dynorb_raxpy(sys_size, c[4], ff5_, yy);
-            _dynorb_raxpy(sys_size, c[5], ff6_, yy);
+            for (int i = 1; i < n_stages; ++i)
+            {
+                _dynorb_raxpy(sys_size, c[i], &FF_[sys_size * i], yy);
+            }
             _dynorb_rscal(sys_size, h, yy);
             _dynorb_raxpy(sys_size, 1.0, yyi_, yy);
-            // Store the results into solution arrays / realloc if needed:
-            if (step >= (n_steps - 1))
+
+            // Realloc if needed:
+            if (step >= n_steps)
             {
                 // Double the current number of steps (increase size)
-                n_steps *= 2;
+                // n_steps *= 2;
+                ++n_steps;
+                // Update Structure:
+                solver_configuration->n_steps = n_steps;
 
                 // Reallocate memory for tt (time array)
                 tt = (double *)realloc(tt, n_steps * sizeof(double));
@@ -1150,28 +1140,12 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
                     exit(EXIT_FAILURE);
                 }
             }
-        }
-        else
-        {
-            printf("Maximum truncation error = %f | Allowed Truncation error = %f\n", trunc_err_max, trunc_err_allowed);
-            break;
-        }
-
-        // Store the results
-        tt[step] = t;                                         // Store the current time
-        _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]); // Store the current state
-
-        // Increase step:
-        ++step;
-        printf("End time step t = %f | h = %f\n", t, h);
-
-        // Update time step:
-        h = _dynorb_rmin(delta * h, 4.0 * h);
-        if (h < hmin)
-        {
-            printf("\n\n Warning: Step size fell below its minimum\n");
-            printf("allowable value (%f) at time %f.\n\n", hmin, t);
-            break;
+            // Store the results
+            tt[step] = t;                                         // Store the current time
+            _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]); // Store the current state
+            // Increase step:
+            ++step;
+            // printf("End time step t = %f | h = %f\n", t, h);
         }
     }
 }
