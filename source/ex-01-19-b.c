@@ -86,7 +86,7 @@ int main(void)
     int sys_size = 2;           // Size of odeSys
     real t0 = 0.0;              // Initial Time
     real t1 = 110.0;            // Final Time
-    real h = 0.01;              // Time step
+    real h = 0.001;             // Time step
 
     // Confugure (dynamically)
     _dynorb_configure_dynamic(&SimpHarmOscSys, &solv_conf,
@@ -97,6 +97,7 @@ int main(void)
     const real tol = 1.e-3;
     _dynorb_rrkf45(&SimpHarmOscSys, &solv_conf, tol);
 
+    printf("\nDONE INTEGRATING\n");
     /* ==========================================================
      * DATA LOG: Save data
      * ========================================================== */
@@ -110,16 +111,16 @@ int main(void)
     }
 
     // Step 5: Loop over time steps and calculate analytical solution
-    for (int i = 0; i < solv_conf.n_steps - 2; i++) // -1 beacause last line might be spurious
+    for (int i = 0; i < solv_conf.n_steps; i++) // -1 beacause last line might be spurious
     {
         // Analytical Solution
         real x_a = 0.0;
         SimpHarmOscAnalyticalSolution(SimpHarmOscSys.tt[i], yy0, &x_a, &p);
-        fprintf(outfile, "%.10f %.10f %.10f %.10f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size + 1], x_a);
+        fprintf(outfile, "%.20f %.20f %.20f %.20f\n", SimpHarmOscSys.tt[i], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size], SimpHarmOscSys.YY_t[i * SimpHarmOscSys.sys_size + 1], x_a);
     }
 
     // Free Memory and Closing the file:
-    _dynorb_free(&SimpHarmOscSys);
+    // _dynorb_free(&SimpHarmOscSys);
     fclose(outfile);
 
     /* ==========================================================

@@ -566,10 +566,12 @@ void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *s
 {
     // Compute (initial) number of steps:
     int n_steps = ceil(((t1 - t0) / h)); // int n_steps = (int)((((t1 - t0)) / h) + 1.0);
+    // n_steps *= 2.0;
+    // printf("REMOVE n_steps*=2.0 in _dynorb_configure_dynamic\n");
 
     // Allocate memory for the time steps and solution array
-    ode_system->tt = (real *)malloc(n_steps * sizeof(real));
-    ode_system->YY_t = (real *)malloc(n_steps * sys_size * sizeof(real));
+    ode_system->tt = (real *)calloc(n_steps, sizeof(real));
+    ode_system->YY_t = (real *)calloc(n_steps, sys_size * sizeof(real));
 
     // Check for successful allocation
     if (ode_system->tt == NULL || ode_system->YY_t == NULL)
@@ -1039,13 +1041,12 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
 
     // Initialize:
     t = t0;
-    // h = (t1 - t0) / 100.0;
     _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
     while (t < t1)
     {
         // printf("\n\nBegin time step t = %f | h = %f\n", t, h);
-        hmin = 1.e-6; // 16.0 * (_dynorb_eps(t)); // Update hmin
+        hmin = 16.0 * (_dynorb_eps(t)); // Update hmin
         ti = t;
         _dynorb_rvcopy(sys_size, yy, yyi_);
         // Evaluate time derivatives at stage i:
@@ -1083,14 +1084,13 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
             printf("Maximum truncation error = %f\n", trunc_err_max);
             printf("Allowed Truncation error = %f\n", trunc_err_allowed);
             // Fractional Change in step-size:
-            delta = (real)(pow((trunc_err_allowed / (trunc_err_max + DBL_EPSILON)), (1 / 5))); // COULD GIVE PRROBLEMS float/double
+            delta = (real)pow(trunc_err_allowed / (trunc_err_max + DBL_EPSILON), (1.0 / 5.0)); // COULD GIVE PRROBLEMS float/double
             delta *= 0.8;
-            printf("Fractional change in step-size: delta = %f\n", delta);
-
+            // printf("Fractional change in step-size: delta = %f\n", delta);
             // Update time step :
-            printf("Step size before: h = %f\n", h);
+            // printf("Step size before: h = %f\n", h);
             h = _dynorb_rmin(delta * h, 4.0 * h);
-            printf("Step size after: h = %f\n", h);
+            // printf("Step size after: h = %f\n", h);
             if (h < hmin)
             {
                 printf("\n\n Warning: Step size (h = %.10f) fell below\n", h);
@@ -1101,7 +1101,7 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
         else // Update solution
         {
             // Safety check:
-            h = _dynorb_rmin(h, (t1 - t));
+            h = _dynorb_rmin(h, fabs(t1 - t));
             // Update Time
             t += h;
 
@@ -1111,6 +1111,7 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
             for (int i = 1; i < n_stages; ++i)
             {
                 _dynorb_raxpy(sys_size, c[i], &FF_[sys_size * i], yy);
+                // _dynorb_rmprint(FF_, sys_size*n_stages, 1);
             }
             _dynorb_rscal(sys_size, h, yy);
             _dynorb_raxpy(sys_size, 1.0, yyi_, yy);
@@ -1119,29 +1120,17 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
             if (step >= n_steps)
             {
                 // Double the current number of steps (increase size)
-                // n_steps *= 2;
-                ++n_steps;
+                n_steps += 1; // n_steps *= 2;
                 // Update Structure:
                 solver_configuration->n_steps = n_steps;
-
-                // Reallocate memory for tt (time array)
-                tt = (double *)realloc(tt, n_steps * sizeof(double));
-                if (tt == NULL)
-                {
-                    fprintf(stderr, "Error reallocating memory for tt\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                // Reallocate memory for YY_t (solution array)
-                YY_t = (double *)realloc(YY_t, n_steps * sys_size * sizeof(double));
-                if (YY_t == NULL)
-                {
-                    fprintf(stderr, "Error reallocating memory for YY_t\n");
-                    exit(EXIT_FAILURE);
-                }
+                // Reallocate memory for solution arrays
+                tt = (real *)realloc(tt, n_steps * sizeof(real));
+                YY_t = (real *)realloc(YY_t, n_steps * sys_size * sizeof(real));
             }
             // Store the results
-            tt[step] = t;                                         // Store the current time
+
+            tt[step] = t; // Store the current time
+            // printf("\ntt[step] = %.3f | t = %.3f | ptr_tt = %p\n", tt[step], t, (void *)tt);
             _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]); // Store the current state
             // Increase step:
             ++step;
