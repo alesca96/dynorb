@@ -3,7 +3,7 @@
 #define USE_CBLAS
 #include "..\include\dynorb.h" // Include your custom RK header file
 
-/* Define the system of ODEs: example 1.18 (Chapter 1, pag.45)
+/* Define the system of ODEs: example 1.19 (Chapter 1, pag.48)
     REF: Curtis, H.D., 2020. Orbital mechanics for engineering students (3rd Edit.) */
 
 typedef struct
