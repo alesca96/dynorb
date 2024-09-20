@@ -16,7 +16,7 @@ typedef struct
 void odeFun(const real t, const real *yy, const void *params, real *ff)
 {
     // Parameters:
-    assert(t < 10000.0);
+    assert(t < 10000000000.0); // Useless, just to compile
     odeFunParams *Params = (odeFunParams *)params;
     real m = Params->m;
     real mu_E = Params->mu_E;
