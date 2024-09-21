@@ -17,7 +17,7 @@ int main(void)
      * ---------------------------------------------------------- */
 
     // Two Body System Parameters:
-    _dynorb_twoBodyParams twoBodyParams;
+    _dynorb_twoBodyAbsParams twoBodyParams;
     twoBodyParams.m1 = 1.0e26;
     twoBodyParams.m2 = 1.0e26;
     twoBodyParams.G = 6.67259e-20;
@@ -48,7 +48,7 @@ int main(void)
     _dynorb_solverConf solverConf;
     // Configuration
     _dynorb_configure_dynamic(&twoBodySys, &solverConf,
-                              &_dynorb_twoBodyFun, &twoBodyParams, yy0,
+                              &_dynorb_twoBodyAbsFun, &twoBodyParams, yy0,
                               sys_size, t0, t1, h);
     // // Static memory allocation:
     // real tt[solverConf.n_steps];

@@ -9,9 +9,9 @@
  */
 
 /* TODO: Short/Medium Term
- * 1. Implement Curtis Algorithms usinng wrappers of CBLAS and LAPACKE
+ * 1. Implement Curtis Algorithms using wrappers of CBLAS and LAPACKE
  * 2. Reduce (completly eliminate when possible) heap usage
- * 3. Fullfill as much as possible NASA POWER OF TEN
+ * 3. Respect as much as possible NASA POWER OF TEN
  */
 
 /* TODO: Long Term
@@ -65,15 +65,6 @@ const bool real_is_double = 0;
 typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *odeParams, real *dyydt);
 
 /* ODE SYSTEM AND SOLVER: */
-
-typedef struct
-{
-    real m1;
-    real m2;
-    real G;
-
-} _dynorb_twoBodyParams;
-
 typedef struct
 {
     _dynorb_odeFun *odeFunction; // Pointer to the ODE function
@@ -93,6 +84,22 @@ typedef struct
     real h;      // Initial Step Size
     int n_steps; // Initial Number of steps
 } _dynorb_solverConf;
+
+/* USER SUPPORT STRUCTURES: */
+typedef struct
+{
+    real m1;
+    real m2;
+    real G;
+
+} _dynorb_twoBodyAbsParams;
+
+typedef struct
+{
+    real m;
+    real mu;
+
+} _dynorb_twoBodyRelParams;
 
 /* UTILITY FUNCTIONS: */
 real _dynorb_max_abs_component(int n, const real *xx);
@@ -115,13 +122,40 @@ void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy);
 void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const int src_start_i, const int src_start_j, const int cpy_m, const int cpy_n, real *dst_B, const int dst_m, const int dst_n, const int dst_start_i, const int dst_start_j);
 
 /* USER SUPPORT FUNCTIONS: */
+
 /**
- * @brief Computes the derivatives for a two-body dynamical system.
+ * @brief Computes the RELATIVE derivatives (in NON-ROTATING frame) for a secondary body orbiting a main attractor.
  *
- * This function calculates the acceleration and state derivatives for two bodies
- * under the influence of their mutual gravitational attraction. The function takes
- * the current state of the system, parameters, and outputs the derivatives of the
- * state variables.
+ * This function calculates the RELATIVE acceleration and state derivatives the secondary body
+ * under the gravitational attraction of the main one. The quantities are relative (to main body) and
+ * expressed in a NON-ROTATING frame centered in the main body (CoM). For Earth orbits, this is the ECI.
+ * The function takes the current state of the system, parameters, and outputs the derivatives of the
+ * state variables. See Curtis,  Chapter 2, pag.69: Algorithm 2.1
+ *
+ * @param t          Time variable (unused in calculations).
+ * @param yy        Pointer to an array of state variables (12 elements):
+ *                  - Relative Position of secondary body: yy[0], yy[1], yy[2]
+ *                  - Relative Velocity of secondary body: yy[3], yy[4], yy[5]
+ * @param params    Pointer to a structure containing gravitational parameters:
+ *                  - m: Mass of secondary body
+ *                  - mu: Gravitational parameter of main attractor
+ * @param ff        Pointer to an array where the computed derivatives will be stored:
+ *                  - Derivative of secondary body velocity: ff[0], ff[1], ff[2]
+ *                  - Derivative of secondary body acceleration: ff[6], ff[7], ff[8]
+ *
+ * The function computes the acceleration for each body based on their positions
+ * and outputs the derivatives of both position and velocity.
+ */
+void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff);
+
+/**
+ * @brief Computes the ABSOLUTE derivatives for a two-body dynamical system.
+ *
+ * This function calculates the ABSOLUTE acceleration and state derivatives for two bodies
+ * under the influence of their mutual gravitational attraction. Quantities are expressed in the
+ * Inertial frame coordinate system.
+ * The function takes the current state of the system, parameters, and outputs the derivatives of the
+ * state variables. See Curtis,  Chapter 2, pag.64: Algorithm 2.1
  *
  * @param t          Time variable (unused in calculations).
  * @param yy        Pointer to an array of state variables (12 elements):
@@ -142,7 +176,7 @@ void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const i
  * The function computes the acceleration for each body based on their positions
  * and outputs the derivatives of both position and velocity.
  */
-void _dynorb_twoBodyFun(const real t, const real *yy, const void *params, real *ff);
+void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff);
 
 /* CORE FUNCTIONS: */
 
@@ -571,27 +605,45 @@ void _dynorb_rvfill(real *xx, const int n, const real a)
 }
 
 /* USER SUPPORT FUNCTIONS: */
-void _dynorb_twoBodyFun(const real t, const real *yy, const void *params, real *ff)
+void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff)
 {
     // Parameters:
     (void)t; // Useless, just to compile
-    _dynorb_twoBodyParams *Params = (_dynorb_twoBodyParams *)params;
+    _dynorb_twoBodyRelParams *Params = (_dynorb_twoBodyRelParams *)params;
+    // real m = Params->m;
+    real mu = Params->mu;
+    // Position:
+    real rr_[3] = {yy[0], yy[1], yy[2]};
+    // Velocity:
+    real vv_[3] = {yy[3], yy[4], yy[5]};
+    // Acceleration:
+    real aa_[3];
+    // Compute Acceleration:
+    _dynorb_rvcopy(3, rr_, aa_);
+    real r = _dynorb_rnrm2(3, rr_);
+    _dynorb_rscal(3, -1.0 * (mu / (r * r * r)), aa_); // (R2-R1)/r^3
+    // Update State Derivatives:
+    _dynorb_rvcopy(3, vv_, &ff[0]);
+    _dynorb_rvcopy(3, aa_, &ff[3]);
+}
+
+void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff)
+{
+    // Parameters:
+    (void)t; // Useless, just to compile
+    _dynorb_twoBodyAbsParams *Params = (_dynorb_twoBodyAbsParams *)params;
     real m1 = Params->m1;
     real m2 = Params->m2;
     real G = Params->G;
-
-    // Psotion:
+    // Position:
     real RR1_[3] = {yy[0], yy[1], yy[2]};
     real RR2_[3] = {yy[3], yy[4], yy[5]};
-
     // Velocity:
     real VV1_[3] = {yy[6], yy[7], yy[8]};
     real VV2_[3] = {yy[9], yy[10], yy[11]};
-
     // Acceleration:
     real AA1_[3];
     real AA2_[3];
-
     // Compute Acceleration:
     real RR_diff[3];
     _dynorb_rvcopy(3, RR2_, RR_diff);
@@ -602,7 +654,6 @@ void _dynorb_twoBodyFun(const real t, const real *yy, const void *params, real *
     _dynorb_rvcopy(3, RR_diff, AA2_);             // Compute AA1_ and AA2_
     _dynorb_rscal(3, (G * m2), AA1_);             // Compute AA1_ and AA2_
     _dynorb_rscal(3, (-1.0 * G * m1), AA2_);      // Compute AA1_ and AA2_
-
     // Update State Derivatives:
     _dynorb_rvcopy(3, VV1_, &ff[0]);
     _dynorb_rvcopy(3, VV2_, &ff[3]);
