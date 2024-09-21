@@ -60,6 +60,10 @@ const bool real_is_double = 0;
 #endif
 
 /* MACROS: */
+#define _dynorb_PI 3.1415926535897932384626433832795028841971693993751058209749445923078164062
+#define _dynorb_MU_E 398600.44188
+
+/* GLOBAL VARIABLES: */
 
 /* ODE FUNCTION: */
 typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *odeParams, real *dyydt);
@@ -122,6 +126,49 @@ void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy);
 void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const int src_start_i, const int src_start_j, const int cpy_m, const int cpy_n, real *dst_B, const int dst_m, const int dst_n, const int dst_start_i, const int dst_start_j);
 
 /* USER SUPPORT FUNCTIONS: */
+
+/**
+ * @brief Propagates the initial state vector \p yy0 by a true anomaly change \p Dth
+ *        to compute the final state vector \p yy using Lagrange's equations.
+ *
+ * This function computes the new position and velocity vectors by using the
+ * Lagrange coefficients, which are obtained from the initial state and the
+ * true anomaly difference.
+ *
+ * @param[in]  mu   Gravitational parameter (standard gravitational parameter) of the central body.
+ * @param[in]  Dth  Change in true anomaly in radians.
+ * @param[in]  yy0  Initial state vector (position and velocity), an array of size 6:
+ *                    - First 3 elements are the position vector.
+ *                    - Last 3 elements are the velocity vector.
+ * @param[out] yy   Final state vector (position and velocity), an array of size 6:
+ *                    - First 3 elements are the updated position vector.
+ *                    - Last 3 elements are the updated velocity vector.
+ *
+ * This function internally uses Lagrange's coefficients to compute the final state vector.
+ */
+void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy);
+
+/**
+ * @brief Computes the Lagrange coefficients for orbital propagation given the initial state and true anomaly change.
+ *
+ * This function computes the Lagrange coefficients \( f \), \( g \), \( f_dot \), and \( g_dot \)
+ * used to propagate the orbital state using Lagrange's equations.
+ *
+ * @param[in]  mu      Gravitational parameter (standard gravitational parameter) of the central body.
+ * @param[in]  Dth     Change in true anomaly in radians.
+ * @param[in]  yy0     Initial state vector (position and velocity), an array of size 6:
+ *                      - First 3 elements are the position vector.
+ *                      - Last 3 elements are the velocity vector.
+ * @param[out] fgdfdg  Array of size 4 to store the Lagrange coefficients:
+ *                      - fgdfdg[0] = \( f \)
+ *                      - fgdfdg[1] = \( g \)
+ *                      - fgdfdg[2] = \( \dot{f} \)
+ *                      - fgdfdg[3] = \( \dot{g} \)
+ *
+ * This function calculates the radial and tangential components of velocity, as well as the constant angular momentum,
+ * and applies the appropriate equations to compute the Lagrange coefficients.
+ */
+void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg);
 
 /**
  * @brief Computes the RELATIVE derivatives (in NON-ROTATING frame) for a secondary body orbiting a main attractor.
@@ -662,6 +709,41 @@ void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, rea
 }
 
 /* CORE FUNCTIONS: */
+
+void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy)
+{
+    real fgdfdg[4];
+    _dynorb_LagrangeFunctionsFrom_yy0_Dth(mu, Dth, yy0, fgdfdg);
+    // Computation of rr:
+    _dynorb_rvcopy(3, &yy0[0], &yy[0]);
+    _dynorb_rscal(3, fgdfdg[0], &yy[0]);
+    _dynorb_raxpy(3, fgdfdg[1], &yy0[3], &yy[0]);
+    // Computation of vv:
+    _dynorb_rvcopy(3, &yy0[0], &yy[3]);
+    _dynorb_rscal(3, fgdfdg[2], &yy[3]);
+    _dynorb_raxpy(3, fgdfdg[3], &yy0[3], &yy[3]);
+}
+
+void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg)
+{
+    // Norms
+    real r0 = _dynorb_rnrm2(3, &yy0[0]);
+    real v0 = _dynorb_rnrm2(3, &yy0[3]);
+    // Radial Component of velocity:
+    real vr0 = _dynorb_rdot(3, &yy0[0], &yy0[3]) / r0;
+    // Magnitude of (constant) angular momentum:
+    real h0 = r0 * sqrt((v0 * v0) - (vr0 * vr0));
+    real s = sin(Dth);
+    real c = cos(Dth);
+    // Equation 2.152 :
+    real r = ((h0 * h0) / mu) / ((1 + ((((h0 * h0) / (mu * r0)) - 1) * c) - ((h0 * vr0 * s) / mu)));
+    // Equations 2.158a & b :
+    fgdfdg[0] = 1 - (mu * r * (1 - c) / (h0 * h0));
+    fgdfdg[1] = r * r0 * s / h0;
+    // Equations 2.158c & d :
+    fgdfdg[2] = (mu / h0) * (vr0 / h0 * (1 - c) - s / r0);
+    fgdfdg[3] = 1 - mu * r0 / (h0 * h0) * (1 - c);
+}
 
 void _dynorb_rcol(const real *A, int m, int j, real *column)
 {
