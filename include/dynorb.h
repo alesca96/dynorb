@@ -65,6 +65,15 @@ const bool real_is_double = 0;
 typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *odeParams, real *dyydt);
 
 /* ODE SYSTEM AND SOLVER: */
+
+typedef struct
+{
+    real m1;
+    real m2;
+    real G;
+
+} _dynorb_twoBodyParams;
+
 typedef struct
 {
     _dynorb_odeFun *odeFunction; // Pointer to the ODE function
@@ -104,6 +113,36 @@ void _dynorb_raxpy(const int n, const real alpha, const real *xx, real *yy);
 void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real alpha, const real *A, const real *xx, const real beta, real *yy);
 void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy);
 void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const int src_start_i, const int src_start_j, const int cpy_m, const int cpy_n, real *dst_B, const int dst_m, const int dst_n, const int dst_start_i, const int dst_start_j);
+
+/* USER SUPPORT FUNCTIONS: */
+/**
+ * @brief Computes the derivatives for a two-body dynamical system.
+ *
+ * This function calculates the acceleration and state derivatives for two bodies
+ * under the influence of their mutual gravitational attraction. The function takes
+ * the current state of the system, parameters, and outputs the derivatives of the
+ * state variables.
+ *
+ * @param t          Time variable (unused in calculations).
+ * @param yy        Pointer to an array of state variables (12 elements):
+ *                  - Position of body 1: yy[0], yy[1], yy[2]
+ *                  - Position of body 2: yy[3], yy[4], yy[5]
+ *                  - Velocity of body 1: yy[6], yy[7], yy[8]
+ *                  - Velocity of body 2: yy[9], yy[10], yy[11]
+ * @param params    Pointer to a structure containing gravitational parameters:
+ *                  - G: Gravitational constant
+ *                  - m1: Mass of body 1
+ *                  - m2: Mass of body 2
+ * @param ff        Pointer to an array where the computed derivatives will be stored:
+ *                  - Derivative of body 1 velocity: ff[0], ff[1], ff[2]
+ *                  - Derivative of body 2 velocity: ff[3], ff[4], ff[5]
+ *                  - Derivative of body 1 acceleration: ff[6], ff[7], ff[8]
+ *                  - Derivative of body 2 acceleration: ff[9], ff[10], ff[11]
+ *
+ * The function computes the acceleration for each body based on their positions
+ * and outputs the derivatives of both position and velocity.
+ */
+void _dynorb_twoBodyFun(const real t, const real *yy, const void *params, real *ff);
 
 /* CORE FUNCTIONS: */
 
@@ -531,6 +570,46 @@ void _dynorb_rvfill(real *xx, const int n, const real a)
     }
 }
 
+/* USER SUPPORT FUNCTIONS: */
+void _dynorb_twoBodyFun(const real t, const real *yy, const void *params, real *ff)
+{
+    // Parameters:
+    (void)t; // Useless, just to compile
+    _dynorb_twoBodyParams *Params = (_dynorb_twoBodyParams *)params;
+    real m1 = Params->m1;
+    real m2 = Params->m2;
+    real G = Params->G;
+
+    // Psotion:
+    real RR1_[3] = {yy[0], yy[1], yy[2]};
+    real RR2_[3] = {yy[3], yy[4], yy[5]};
+
+    // Velocity:
+    real VV1_[3] = {yy[6], yy[7], yy[8]};
+    real VV2_[3] = {yy[9], yy[10], yy[11]};
+
+    // Acceleration:
+    real AA1_[3];
+    real AA2_[3];
+
+    // Compute Acceleration:
+    real RR_diff[3];
+    _dynorb_rvcopy(3, RR2_, RR_diff);
+    _dynorb_raxpy(3, -1.0, RR1_, RR_diff);
+    real r = _dynorb_rnrm2(3, RR_diff);
+    _dynorb_rscal(3, (1 / (r * r * r)), RR_diff); // (R2-R1)/r^3
+    _dynorb_rvcopy(3, RR_diff, AA1_);             // Compute AA1_ and AA2_
+    _dynorb_rvcopy(3, RR_diff, AA2_);             // Compute AA1_ and AA2_
+    _dynorb_rscal(3, (G * m2), AA1_);             // Compute AA1_ and AA2_
+    _dynorb_rscal(3, (-1.0 * G * m1), AA2_);      // Compute AA1_ and AA2_
+
+    // Update State Derivatives:
+    _dynorb_rvcopy(3, VV1_, &ff[0]);
+    _dynorb_rvcopy(3, VV2_, &ff[3]);
+    _dynorb_rvcopy(3, AA1_, &ff[6]);
+    _dynorb_rvcopy(3, AA2_, &ff[9]);
+}
+
 /* CORE FUNCTIONS: */
 
 void _dynorb_rcol(const real *A, int m, int j, real *column)
@@ -566,8 +645,6 @@ void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *s
 {
     // Compute (initial) number of steps:
     int n_steps = ceil(((t1 - t0) / h)); // int n_steps = (int)((((t1 - t0)) / h) + 1.0);
-    // n_steps *= 2.0;
-    // printf("REMOVE n_steps*=2.0 in _dynorb_configure_dynamic\n");
 
     // Allocate memory for the time steps and solution array
     ode_system->tt = (real *)calloc(n_steps, sizeof(real));
