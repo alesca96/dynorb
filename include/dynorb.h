@@ -65,6 +65,9 @@ const bool real_is_double = 0;
 
 /* GLOBAL VARIABLES: */
 
+/* NON LINERAR FUNCTION */
+typedef real (*_dynorb_nonLinScalFun)(real a, void *funParams);
+
 /* ODE FUNCTION: */
 typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *odeParams, real *dyydt);
 
@@ -709,6 +712,29 @@ void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, rea
 }
 
 /* CORE FUNCTIONS: */
+
+real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, real tol)
+{ // Implementation of Bisection Method
+    // Midpoit
+    real c = 0;
+    // Number of Iteration: /T TODO: fix fabs, works inly with double
+    real n = ceil(log(fabs(b - a) / tol) / log(2));
+    for (int i = 0; i < n; ++i)
+    {
+        c = 0.5 * (a + b); // midpoint update
+        real f_a = function(a, funParams);
+        real f_c = function(c, funParams);
+        if (f_a * f_c > 0)
+        {
+            a = c;
+        }
+        else
+        {
+            b = c;
+        }
+    }
+    return c;
+}
 
 void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy)
 {

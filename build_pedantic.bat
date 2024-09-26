@@ -35,6 +35,9 @@ gcc ^
 -o .\bin\release\out.exe ^
 -lgsl -lgslcblas -lm
 
+@echo off
+
 :: Execute the program
-echo Executing the program: .\bin\release\out.exe
 .\bin\release\out.exe
+@REM echo Executing the program: .\bin\release\out.exe
+@REM .\bin\release\out.exe
