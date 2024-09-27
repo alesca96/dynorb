@@ -2,7 +2,7 @@
 #define USE_DOUBLE
 #define USE_CBLAS
 #include "..\include\dynorb.h"
-// Time integration
+// Time
 #include <sys/time.h>
 
 /*  Example 2.13 (Chapter 2, pag.117): Compute the state vector [rr,vv] from the initial

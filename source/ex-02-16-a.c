@@ -2,8 +2,6 @@
 #define USE_DOUBLE
 #define USE_CBLAS
 #include "..\include\dynorb.h"
-// Time integration
-#include <sys/time.h>
 
 /*  Example 2.16 (Chapter 2, pag.129): Locate the five Lagrange points for the
     Earth-Moon system using the Bisection method. ex-02-16-a.c

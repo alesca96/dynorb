@@ -109,6 +109,8 @@ typedef struct
 } _dynorb_twoBodyRelParams;
 
 /* UTILITY FUNCTIONS: */
+real _dynorb_rad2deg(real angle_rad);
+real _dynorb_deg2rad(real angle_deg);
 real _dynorb_max_abs_component(int n, const real *xx);
 real _dynorb_eps(real a);
 int _dynorb_min(int a, int b);
@@ -577,6 +579,16 @@ void IMPLEMENT_ALTERNATIVE_TO_CBLAS_FUNCTIONS(void)
 #endif
 
 /* UTILITY FUNCTIONS: */
+real _dynorb_rad2deg(real angle_rad)
+{
+    real angle_deg = (angle_rad / _dynorb_PI) * 180.0;
+    return angle_deg;
+}
+real _dynorb_deg2rad(real angle_deg)
+{
+    real angle_rad = (angle_deg / 180.0) * _dynorb_PI;
+    return angle_rad;
+}
 
 real _dynorb_max_abs_component(int n, const real *xx)
 { // Function to compute the maximum absolute component of a xxtor
