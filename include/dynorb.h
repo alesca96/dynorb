@@ -12,12 +12,14 @@
  * 1. Implement Curtis Algorithms using wrappers of CBLAS and LAPACKE
  * 2. Reduce (completly eliminate when possible) heap usage
  * 3. Respect as much as possible NASA POWER OF TEN
+ * 4. Implement all new functions as: _dynorb_rcamelCaseCaseCase (r-->real)
  */
 
 /* TODO: Long Term
  * 1. Implement Custom subroutines to substitute CBLAS and LAPACKE
  * 2. Completly eliminate heap usage (if impossible, remove the function from library)
  * 3. Enforce NASA POWER OF TEN
+ * 4. Conver all functions as: _dynorb_rcamelCaseCaseCase (r-->real)
  */
 
 /* NASA POWER OF TEN RULES (http://web.eecs.umich.edu/~imarkov/10rules.pdf):
@@ -69,7 +71,7 @@ const bool real_is_double = 0;
  * DYNORB MACROS:
  * ==================================================================================================== */
 #define _dynorb_PI 3.1415926535897932384626433832795028841971693993751058209749445923078164062
-#define _dynorb_MU_E 398600.44188
+#define _dynorb_MU_E 398600.44188 // Earth grav. parameter [km^3 /s^2]
 
 /* ====================================================================================================
  * DYNORB GLOBAL VARIABLES:
@@ -174,6 +176,7 @@ void _dynorb_rrow(const real *A, int m, int n, int i, real *row);
 void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff);
 void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff);
 void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *params, real *ff);
+real _dynorb_rkeplerE(real e, real M_ellipse, real tol);
 void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg);
 void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy);
 void _dynorb_free(_dynorb_odeSys *ode_system);
@@ -533,6 +536,29 @@ void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *para
     ff[1] = yy[3];
     ff[2] = _2W * vy + _W2 * x - (p->mu1 * (x - p->x1) / _r1_3) - (p->mu2 * (x - p->x2) / _r2_3);
     ff[3] = -1.0 * _2W * vx + _W2 * y - ((p->mu1 / _r1_3) + (p->mu2 / _r2_3)) * y;
+}
+
+real _dynorb_rkeplerE(real e, real M_ellipse, real tol)
+{
+    // Initial estimate of the root (Prussing & Conway):
+    real E;
+    if (M_ellipse < _dynorb_PI)
+    {
+        E = M_ellipse + 0.5 * e;
+    }
+    else
+    {
+        E = M_ellipse - 0.5 * e;
+    }
+    real ratio = 1;
+    while (fabs(ratio) > tol)
+    {
+        // Update ratio:
+        ratio = (E - e * sin(E) - M_ellipse) / (1 - e * cos(E));
+        // Update E:
+        E -= ratio;
+    }
+    return E;
 }
 
 void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg)
