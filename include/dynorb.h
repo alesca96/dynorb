@@ -36,9 +36,9 @@
 #ifndef DYNORB_H_
 #define DYNORB_H_
 
-/* =====================================
+/* ====================================================================================================
  * SATNDARD C-LIBS:
- * ===================================== */
+ * ==================================================================================================== */
 #include <assert.h>
 #include <float.h>
 #include <math.h>
@@ -47,16 +47,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* =====================================
+/* ====================================================================================================
  * CBLAS SWITCH:
- * ===================================== */
+ * ==================================================================================================== */
 #ifdef USE_CBLAS
 #include <cblas.h>
 #endif
 
-/* =====================================
+/* ====================================================================================================
  * DOUBLE-FLOAT SWITCH:
- * ===================================== */
+ * ==================================================================================================== */
 #ifdef USE_DOUBLE
 typedef double real;
 const bool real_is_double = 1;
@@ -65,25 +65,25 @@ typedef float real;
 const bool real_is_double = 0;
 #endif
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB MACROS:
- * ===================================== */
+ * ==================================================================================================== */
 #define _dynorb_PI 3.1415926535897932384626433832795028841971693993751058209749445923078164062
 #define _dynorb_MU_E 398600.44188
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB GLOBAL VARIABLES:
- * ===================================== */
+ * ==================================================================================================== */
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB CORE FYNCTION TYPES:
- * ===================================== */
+ * ==================================================================================================== */
 typedef real (*_dynorb_nonLinScalFun)(real a, void *funParams);                                 // Non-linear function
 typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *odeParams, real *dyydt); // ODE-function
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB CORE STRUCTURES:
- * ===================================== */
+ * ==================================================================================================== */
 
 typedef struct
 {
@@ -105,9 +105,9 @@ typedef struct
     int n_steps; // Initial Number of steps
 } _dynorb_solverConf;
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB USER SUPPORT STRUCTURES:
- * ===================================== */
+ * ==================================================================================================== */
 
 typedef struct
 {
@@ -137,9 +137,9 @@ typedef struct
 
 } _dynorb_threeBodyRestrictParams;
 
-/* ===========================================
+/* ==========================================================================================================
  * DYNORB BASIC LINEAR ALGEBRA SUBROUTINES:
- * =========================================== */
+ * ========================================================================================================== */
 
 real _dynorb_rdot(const int n, const real *xx, const real *yy);
 real _dynorb_rnrm2(const int n, const real *xx);
@@ -149,9 +149,9 @@ void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real a
 void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy);
 void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const int src_start_i, const int src_start_j, const int cpy_m, const int cpy_n, real *dst_B, const int dst_m, const int dst_n, const int dst_start_i, const int dst_start_j);
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB UTILITIES FUNCTIONS:
- * ===================================== */
+ * ==================================================================================================== */
 
 real _dynorb_rad2deg(real angle_rad);
 real _dynorb_deg2rad(real angle_deg);
@@ -167,9 +167,9 @@ static inline real _dynorb_rel(const real *A, int m, int i, int j);
 void _dynorb_rcol(const real *A, int m, int j, real *column);
 void _dynorb_rrow(const real *A, int m, int n, int i, real *row);
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB USER SUPPORT FUNCTIONS:
- * ===================================== */
+ * ==================================================================================================== */
 
 void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff);
 void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff);
@@ -180,9 +180,9 @@ void _dynorb_free(_dynorb_odeSys *ode_system);
 void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration, _dynorb_odeFun *ode_function, void *odeParams, real *yy0, const int sys_size, const real t0, const real tf, const real h);
 void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration, _dynorb_odeFun *ode_function, void *odeParams, real *yy0, const int sys_size, const real t0, const real tf, const real h);
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB CORE FUNCTIONS:
- * ===================================== */
+ * ==================================================================================================== */
 
 real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, real tol);
 void _dynorb_rrk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
@@ -203,9 +203,9 @@ void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
  */
 #ifdef DYNORB_IMPLEMENTATION
 
-/* ===========================================
+/* ==========================================================================================================
  * DYNORB BASIC LINEAR ALGEBRA SUBROUTINES:
- * =========================================== */
+ * ========================================================================================================== */
 #ifdef USE_CBLAS // --> CBLAS wrappers
 
 void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy)
@@ -335,9 +335,9 @@ void IMPLEMENT_ALTERNATIVE_TO_CBLAS_FUNCTIONS(void)
 }
 #endif
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB UTILITIES FUNCTIONS:
- * ===================================== */
+ * ==================================================================================================== */
 real _dynorb_rad2deg(real angle_rad)
 {
     real angle_deg = (angle_rad / _dynorb_PI) * 180.0;
@@ -447,9 +447,9 @@ void _dynorb_rrow(const real *A, int m, int n, int i, real *row)
     }
 }
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB USER SUPPORT FUNCTIONS:
- * ===================================== */
+ * ==================================================================================================== */
 
 void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff)
 {
@@ -653,9 +653,9 @@ void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *so
     printf("Number of Steps: <solv_conf.n_steps = %d>\n", solver_configuration->n_steps);
 }
 
-/* =====================================
+/* ====================================================================================================
  * DYNORB CORE FUNCTIONS:
- * ===================================== */
+ * ==================================================================================================== */
 
 real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, real tol)
 { // Implementation of Bisection Method
