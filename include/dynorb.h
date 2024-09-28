@@ -520,7 +520,7 @@ void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *para
     real vx = yy[2];
     real vy = yy[3];
     // Distance from Body 1 and Body 2:
-    real r1 = sqrt((pow((x + p->pi_2 * p->r12), 2.0)) + (pow(y, 2.0)));
+    real r1 = sqrt((pow((x + (p->pi_2 * p->r12)), 2.0)) + (pow(y, 2.0)));
     real r2 = sqrt((pow((x - p->pi_1 * p->r12), 2.0)) + (pow(y, 2.0)));
     // Common factors:
     real _2W = 2.0 * p->W;
