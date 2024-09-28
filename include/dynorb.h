@@ -36,7 +36,9 @@
 #ifndef DYNORB_H_
 #define DYNORB_H_
 
-/* SATNDARD C-LIBS: */
+/* =====================================
+ * SATNDARD C-LIBS:
+ * ===================================== */
 #include <assert.h>
 #include <float.h>
 #include <math.h>
@@ -45,12 +47,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* CBLAS SWITCH: */
+/* =====================================
+ * CBLAS SWITCH:
+ * ===================================== */
 #ifdef USE_CBLAS
 #include <cblas.h>
 #endif
 
-/* DOUBLE-FLOAT SWITCH: */
+/* =====================================
+ * DOUBLE-FLOAT SWITCH:
+ * ===================================== */
 #ifdef USE_DOUBLE
 typedef double real;
 const bool real_is_double = 1;
@@ -59,26 +65,33 @@ typedef float real;
 const bool real_is_double = 0;
 #endif
 
-/* MACROS: */
+/* =====================================
+ * DYNORB MACROS:
+ * ===================================== */
 #define _dynorb_PI 3.1415926535897932384626433832795028841971693993751058209749445923078164062
 #define _dynorb_MU_E 398600.44188
 
-/* GLOBAL VARIABLES: */
+/* =====================================
+ * DYNORB GLOBAL VARIABLES:
+ * ===================================== */
 
-/* NON LINERAR FUNCTION */
-typedef real (*_dynorb_nonLinScalFun)(real a, void *funParams);
+/* =====================================
+ * DYNORB CORE FYNCTION TYPES:
+ * ===================================== */
+typedef real (*_dynorb_nonLinScalFun)(real a, void *funParams);                                 // Non-linear function
+typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *odeParams, real *dyydt); // ODE-function
 
-/* ODE FUNCTION: */
-typedef void(_dynorb_odeFun)(const real t, const real *yy, const void *odeParams, real *dyydt);
+/* =====================================
+ * DYNORB CORE STRUCTURES:
+ * ===================================== */
 
-/* ODE SYSTEM AND SOLVER: */
 typedef struct
 {
     _dynorb_odeFun *odeFunction; // Pointer to the ODE function
     void *odeParams;             // Pointer to the parameters (structure) for the ODE function
     int sys_size;                // Size of the system (number of equations)
     real t0;                     // Initial time
-    real t1;                     // Final time
+    real tf;                     // Final time
     real *yy0;                   // Pointer to the initial state array
     real *tt;                    // Time Steps of the Solution
     real *YY_t;                  // Solution Array
@@ -87,28 +100,59 @@ typedef struct
 typedef struct
 {
     real t0;     // Initial time
-    real t1;     // Final time
+    real tf;     // Final time
     real h;      // Initial Step Size
     int n_steps; // Initial Number of steps
 } _dynorb_solverConf;
 
-/* USER SUPPORT STRUCTURES: */
+/* =====================================
+ * DYNORB USER SUPPORT STRUCTURES:
+ * ===================================== */
+
 typedef struct
 {
-    real m1;
-    real m2;
-    real G;
+    real m1; // Body 1 mass [kg]
+    real m2; // Body 2 mass [kg]
+    real G;  // Universal gravit. constant [km^3/kg/s^2]
 
 } _dynorb_twoBodyAbsParams;
 
 typedef struct
 {
-    real m;
-    real mu;
+    real m;  // Body Mass [kg]
+    real mu; // Body grav. parameter [km^3 /s^2]
 
 } _dynorb_twoBodyRelParams;
 
-/* UTILITY FUNCTIONS: */
+typedef struct
+{
+    real mu1;  // Body 1 grav. parameter [km^3 /s^2]
+    real mu2;  // Body 2 grav. parameter [km^3 /s^2]
+    real r12;  // Body 1 - Body 2 distance [km]
+    real pi_1; // Body 1 mass ratio [-]: pi_1 = m1/(m1+m2)
+    real pi_2; // Body 2 mass ratio [-]: pi_2 = m2/(m1+m2)
+    real W;    // Angular velocity Body 2 around Body 1 [rad/s]:  W = sqrt((mu1+mu2)) / (r12 * r12 * r12));
+    real x1;   // x-coordinates of the Body 1 relative to the Body 1 - Body 2 barycenter [km]: x1 = -1.0 * pi_2 * r12;
+    real x2;   // x-coordinates of the Body 2 relative to the Body 1 - Body 2 barycenter [km]: x2 = 1.0 * pi_1 * r12;
+
+} _dynorb_threeBodyRestrictParams;
+
+/* ===========================================
+ * DYNORB BASIC LINEAR ALGEBRA SUBROUTINES:
+ * =========================================== */
+
+real _dynorb_rdot(const int n, const real *xx, const real *yy);
+real _dynorb_rnrm2(const int n, const real *xx);
+void _dynorb_rscal(const int n, const real alpha, real *xx);
+void _dynorb_raxpy(const int n, const real alpha, const real *xx, real *yy);
+void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real alpha, const real *A, const real *xx, const real beta, real *yy);
+void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy);
+void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const int src_start_i, const int src_start_j, const int cpy_m, const int cpy_n, real *dst_B, const int dst_m, const int dst_n, const int dst_start_i, const int dst_start_j);
+
+/* =====================================
+ * DYNORB UTILITIES FUNCTIONS:
+ * ===================================== */
+
 real _dynorb_rad2deg(real angle_rad);
 real _dynorb_deg2rad(real angle_deg);
 real _dynorb_max_abs_component(int n, const real *xx);
@@ -119,333 +163,49 @@ real _dynorb_rmin(real a, real b);
 real _dynorb_rmax(real a, real b);
 void _dynorb_rmprint(const real *A, const int m, const int n);
 void _dynorb_rvfill(real *xx, const int n, const real a);
-
-/* BASIC LINEAR ALGEBRA SUBROUTINES: */
-// Thin wrappers of CBLAS if USE_CBLAS. Else custum implementation.
-real _dynorb_rdot(const int n, const real *xx, const real *yy);
-real _dynorb_rnrm2(const int n, const real *xx);
-void _dynorb_rscal(const int n, const real alpha, real *xx);
-void _dynorb_raxpy(const int n, const real alpha, const real *xx, real *yy);
-void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real alpha, const real *A, const real *xx, const real beta, real *yy);
-void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy);
-void _dynorb_rmcopy(const real *src_A, const int src_m, const int src_n, const int src_start_i, const int src_start_j, const int cpy_m, const int cpy_n, real *dst_B, const int dst_m, const int dst_n, const int dst_start_i, const int dst_start_j);
-
-/* USER SUPPORT FUNCTIONS: */
-
-/**
- * @brief Propagates the initial state vector \p yy0 by a true anomaly change \p Dth
- *        to compute the final state vector \p yy using Lagrange's equations.
- *
- * This function computes the new position and velocity vectors by using the
- * Lagrange coefficients, which are obtained from the initial state and the
- * true anomaly difference.
- *
- * @param[in]  mu   Gravitational parameter (standard gravitational parameter) of the central body.
- * @param[in]  Dth  Change in true anomaly in radians.
- * @param[in]  yy0  Initial state vector (position and velocity), an array of size 6:
- *                    - First 3 elements are the position vector.
- *                    - Last 3 elements are the velocity vector.
- * @param[out] yy   Final state vector (position and velocity), an array of size 6:
- *                    - First 3 elements are the updated position vector.
- *                    - Last 3 elements are the updated velocity vector.
- *
- * This function internally uses Lagrange's coefficients to compute the final state vector.
- */
-void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy);
-
-/**
- * @brief Computes the Lagrange coefficients for orbital propagation given the initial state and true anomaly change.
- *
- * This function computes the Lagrange coefficients \( f \), \( g \), \( f_dot \), and \( g_dot \)
- * used to propagate the orbital state using Lagrange's equations.
- *
- * @param[in]  mu      Gravitational parameter (standard gravitational parameter) of the central body.
- * @param[in]  Dth     Change in true anomaly in radians.
- * @param[in]  yy0     Initial state vector (position and velocity), an array of size 6:
- *                      - First 3 elements are the position vector.
- *                      - Last 3 elements are the velocity vector.
- * @param[out] fgdfdg  Array of size 4 to store the Lagrange coefficients:
- *                      - fgdfdg[0] = \( f \)
- *                      - fgdfdg[1] = \( g \)
- *                      - fgdfdg[2] = \( \dot{f} \)
- *                      - fgdfdg[3] = \( \dot{g} \)
- *
- * This function calculates the radial and tangential components of velocity, as well as the constant angular momentum,
- * and applies the appropriate equations to compute the Lagrange coefficients.
- */
-void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg);
-
-/**
- * @brief Computes the RELATIVE derivatives (in NON-ROTATING frame) for a secondary body orbiting a main attractor.
- *
- * This function calculates the RELATIVE acceleration and state derivatives the secondary body
- * under the gravitational attraction of the main one. The quantities are relative (to main body) and
- * expressed in a NON-ROTATING frame centered in the main body (CoM). For Earth orbits, this is the ECI.
- * The function takes the current state of the system, parameters, and outputs the derivatives of the
- * state variables. See Curtis,  Chapter 2, pag.69: Algorithm 2.1
- *
- * @param t          Time variable (unused in calculations).
- * @param yy        Pointer to an array of state variables (12 elements):
- *                  - Relative Position of secondary body: yy[0], yy[1], yy[2]
- *                  - Relative Velocity of secondary body: yy[3], yy[4], yy[5]
- * @param params    Pointer to a structure containing gravitational parameters:
- *                  - m: Mass of secondary body
- *                  - mu: Gravitational parameter of main attractor
- * @param ff        Pointer to an array where the computed derivatives will be stored:
- *                  - Derivative of secondary body velocity: ff[0], ff[1], ff[2]
- *                  - Derivative of secondary body acceleration: ff[6], ff[7], ff[8]
- *
- * The function computes the acceleration for each body based on their positions
- * and outputs the derivatives of both position and velocity.
- */
-void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff);
-
-/**
- * @brief Computes the ABSOLUTE derivatives for a two-body dynamical system.
- *
- * This function calculates the ABSOLUTE acceleration and state derivatives for two bodies
- * under the influence of their mutual gravitational attraction. Quantities are expressed in the
- * Inertial frame coordinate system.
- * The function takes the current state of the system, parameters, and outputs the derivatives of the
- * state variables. See Curtis,  Chapter 2, pag.64: Algorithm 2.1
- *
- * @param t          Time variable (unused in calculations).
- * @param yy        Pointer to an array of state variables (12 elements):
- *                  - Position of body 1: yy[0], yy[1], yy[2]
- *                  - Position of body 2: yy[3], yy[4], yy[5]
- *                  - Velocity of body 1: yy[6], yy[7], yy[8]
- *                  - Velocity of body 2: yy[9], yy[10], yy[11]
- * @param params    Pointer to a structure containing gravitational parameters:
- *                  - G: Gravitational constant
- *                  - m1: Mass of body 1
- *                  - m2: Mass of body 2
- * @param ff        Pointer to an array where the computed derivatives will be stored:
- *                  - Derivative of body 1 velocity: ff[0], ff[1], ff[2]
- *                  - Derivative of body 2 velocity: ff[3], ff[4], ff[5]
- *                  - Derivative of body 1 acceleration: ff[6], ff[7], ff[8]
- *                  - Derivative of body 2 acceleration: ff[9], ff[10], ff[11]
- *
- * The function computes the acceleration for each body based on their positions
- * and outputs the derivatives of both position and velocity.
- */
-void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff);
-
-/* CORE FUNCTIONS: */
-
-/**
- * @brief Extracts a column from a matrix stored in column-major order.
- *
- * This function extracts the column at index `j` from the matrix `A` (stored in
- * column-major order) and stores it in the array `column`.
- *
- * @param[in] A Pointer to the matrix data (stored in column-major order).
- * @param[in] m Number of rows in the matrix.
- * @param[in] j Column index to extract.
- * @param[out] column Array to store the extracted column (size should be `m`).
- *
- * @return[out] void
- */
+static inline real _dynorb_rel(const real *A, int m, int i, int j);
 void _dynorb_rcol(const real *A, int m, int j, real *column);
-
-/**
- * @brief Extracts a row from a matrix stored in column-major order.
- *
- * This function extracts the row at index `i` from the matrix `A` (stored in
- * column-major order) and stores it in the array `row`.
- *
- * @param[in] A Pointer to the matrix data (stored in column-major order).
- * @param[in] m Number of rows in the matrix.
- * @param[in] n Number of columns in the matrix.
- * @param[in] i Row index to extract.
- * @param[out] row Array to store the extracted row (size should be `n`).
- *
- * @return[out] void
- */
 void _dynorb_rrow(const real *A, int m, int n, int i, real *row);
 
-/**
- * @brief Accesses an element from a matrix stored in column-major order.
- *
- * This function retrieves the element at position (i, j) from a matrix `M`
- * stored in column-major order.
- *
- * @param[in] M Pointer to the matrix data (assumed to be stored in column-major order).
- * @param[in] m Number of rows in the matrix.
- * @param[in] i Row index of the element.
- * @param[in] j Column index of the element.
- *
- * @return[out] real The value at the (i, j) position in the matrix.
- */
-static inline real _dynorb_rel(const real *A, int m, int i, int j);
+/* =====================================
+ * DYNORB USER SUPPORT FUNCTIONS:
+ * ===================================== */
 
-/**
- * @brief Frees dynamically allocated memory in the ODE system.
- *
- * This function releases the memory allocated for the time steps array (`tt`)
- * and the solution array (`YY_t`) in the ODE system.
- *
- * @param[in] ode_system Pointer to the structure defining the ODE system.
- *
- * @return[out] void
- */
+void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff);
+void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff);
+void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *params, real *ff);
+void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg);
+void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy);
 void _dynorb_free(_dynorb_odeSys *ode_system);
+void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration, _dynorb_odeFun *ode_function, void *odeParams, real *yy0, const int sys_size, const real t0, const real tf, const real h);
+void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration, _dynorb_odeFun *ode_function, void *odeParams, real *yy0, const int sys_size, const real t0, const real tf, const real h);
 
-/**
- * @brief Configures an ODE system using dynamic memory allocation.
- *
- * This function initializes the ODE system for solving with dynamic memory
- * allocation for time steps (`tt`) and solution array (`YY_t`). It computes
- * the number of steps, allocates memory, and fills the ODE system and solver
- * configuration structures. It also checks for memory allocation failures.
- *
- * @param[in] ode_system Pointer to the structure defining the ODE system.
- * @param[in] solver_configuration Pointer to the solver configuration structure.
- * @param[in] ode_function Pointer to the ODE function to be solved.
- * @param[in] odeParams Pointer to any additional parameters for the ODE function.
- * @param[in] yy0 Pointer to the initial conditions of the system.
- * @param[in] sys_size Size of the system (number of state variables).
- * @param[in] t0 Initial time of the simulation.
- * @param[in] t1 Final time of the simulation.
- * @param[in] h Time step size.
- *
- * This function uses a column-major convention.
- * This function assumes that the user will manually free the allocated memory using
- * `_dynorb_free()`.
- *
- * @return[out] void
- */
-void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration,
-                               _dynorb_odeFun *ode_function, void *odeParams, real *yy0,
-                               const int sys_size, const real t0, const real t1, const real h);
+/* =====================================
+ * DYNORB CORE FUNCTIONS:
+ * ===================================== */
 
-/**
- * @brief Configures an ODE (Ordinary Differential Equation) system assuming stack memory allocation.
- *
- * This function sets up an ODE system for solving using stack memory allocation. It calculates the
- * number of steps required and provides guidelines for manually allocating memory on the stack within
- * the user's code. The function does not perform memory allocation itself but instead assumes that the
- * user will handle it. To manually allocate memory on the stack for the ODE system, include the following lines in your code:
- *
- * - real tt[solver_configuration.n_steps];
- *
- * - real YY_t[solver_configuration.n_steps * ode_system.sys_size];
- *
- * - ode_system.tt = tt;
- *
- * - ode_system.YY_t = YY_t;
- *
- * @param[in] ode_system Pointer to the structure defining the ODE system.
- * @param[in] solver_configuration Pointer to the solver configuration structure.
- * @param[in] ode_function Pointer to the ODE function that needs to be solved.
- * @param[in] odeParams Pointer to any additional parameters needed by the ODE function.
- * @param[in] yy0 Pointer to the initial conditions of the system.
- * @param[in] sys_size The size of the system (i.e., the number of state variables).
- * @param[in] t0 Initial time of the simulation.
- * @param[in] t1 Final time of the simulation.
- * @param[in] h The time step size.
- *
- * This function assumes the use of a column-major ordering for matrix data.
- * Stack memory allocation is expected to be handled by the user, as demonstrated in the code block above.
- *
- * @return[out] void
- */
-void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration,
-                              _dynorb_odeFun *ode_function, void *odeParams, real *yy0,
-                              const int sys_size, const real t0, const real t1, const real h);
-
-/**
- *
- * @brief Performs Euler (RK1) numerical integration for ODE systems.
- *
- * This function integrates an ODE system using a specified order of the Euler (Runge-Kutta order 1) method.
- *
- * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
- *
- * This function uses a column-major convention.
- *
- * @return Void.
- *
- */
+real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, real tol);
 void _dynorb_rrk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
-
-/**
- *
- * @brief Performs Heun (RK2) numerical integration for ODE systems.
- *
- * This function integrates an ODE system using a specified order of the Heun (Runge-Kutta order 2) method.
- *
- * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
- *
- * This function uses a column-major convention.
- *
- * @return Void.
- *
- */
 void _dynorb_rrk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
-
-/**
- *
- * @brief Performs Heun (RK3) numerical integration for ODE systems.
- *
- * This function integrates an ODE system using a specified order of the Runge-Kutta order 3 method.
- *
- * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
- *
- * This function uses a column-major convention.
- *
- * @return Void.
- *
- */
 void _dynorb_rrk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
-
-/**
- *
- * @brief Performs Heun (RK4) numerical integration for ODE systems.
- *
- * This function integrates an ODE system using a specified order of the Runge-Kutta order 4 method.
- *
- * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
- *
- * This function uses a column-major convention.
- *
- * @return Void.
- *
- */
 void _dynorb_rrk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
-
-/**
- *
- * @brief Performs Heun Predictor-Corrector numerical integration for ODE systems.
- *
- * This function integrates an ODE system using Heun Predictor-Corrector method.
- *
- * @param[inout] sys Pointer to the structure defining the ODE system.
- * @param[in] solver_configuration Pointer to structure defining Solver Configuration.
- * @param[in] tol Tolerance
- * @param[in] max_iter Maximum Number of Prediction-Correction Iterations
- *
- * This function uses a column-major convention.
- *
- * @return Void.
- *
- */
 void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration, const real tol, const int max_iter);
 
 #endif // DYNORB_H_
-
 /*
- * **************************************************** *
- * ************* DYNORNB IMPLEMENTATION ************* *
- * **************************************************** *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  */
-
 #ifdef DYNORB_IMPLEMENTATION
 
-/* BASIC LINEAR ALGEBRA SUBROUTINES: */
+/* ===========================================
+ * DYNORB BASIC LINEAR ALGEBRA SUBROUTINES:
+ * =========================================== */
 #ifdef USE_CBLAS // --> CBLAS wrappers
 
 void _dynorb_rvcopy(const int n, const real *src_xx, real *dst_yy)
@@ -568,22 +328,22 @@ void _dynorb_rgemv(const bool TransposeA, const int m, const int n, const real a
     }
 }
 
-#endif
-
-#ifndef USE_CBLAS // --> BLAS-like Custom Implementation
-/* TODO: custom implementation-> */
+#else // #ifndef USE_CBLAS // --> BLAS-like TODO: Custom Implementation
 void IMPLEMENT_ALTERNATIVE_TO_CBLAS_FUNCTIONS(void)
 {
     printf("I HAVE TO IMPLEMENT ALTERNATIVE TO CBLAS FUNCTIONS.\n");
 }
 #endif
 
-/* UTILITY FUNCTIONS: */
+/* =====================================
+ * DYNORB UTILITIES FUNCTIONS:
+ * ===================================== */
 real _dynorb_rad2deg(real angle_rad)
 {
     real angle_deg = (angle_rad / _dynorb_PI) * 180.0;
     return angle_deg;
 }
+
 real _dynorb_deg2rad(real angle_deg)
 {
     real angle_rad = (angle_deg / 180.0) * _dynorb_PI;
@@ -666,28 +426,30 @@ void _dynorb_rvfill(real *xx, const int n, const real a)
     }
 }
 
-/* USER SUPPORT FUNCTIONS: */
-void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff)
+static inline real _dynorb_rel(const real *A, int m, int i, int j)
 {
-    // Parameters:
-    (void)t; // Useless, just to compile
-    _dynorb_twoBodyRelParams *Params = (_dynorb_twoBodyRelParams *)params;
-    // real m = Params->m;
-    real mu = Params->mu;
-    // Position:
-    real rr_[3] = {yy[0], yy[1], yy[2]};
-    // Velocity:
-    real vv_[3] = {yy[3], yy[4], yy[5]};
-    // Acceleration:
-    real aa_[3];
-    // Compute Acceleration:
-    _dynorb_rvcopy(3, rr_, aa_);
-    real r = _dynorb_rnrm2(3, rr_);
-    _dynorb_rscal(3, -1.0 * (mu / (r * r * r)), aa_); // (R2-R1)/r^3
-    // Update State Derivatives:
-    _dynorb_rvcopy(3, vv_, &ff[0]);
-    _dynorb_rvcopy(3, aa_, &ff[3]);
+    return A[(j * m) + i];
 }
+
+void _dynorb_rcol(const real *A, int m, int j, real *column)
+{
+    for (int i = 0; i < m; i++)
+    {
+        column[i] = _dynorb_rel(A, m, i, j); // Accessing element A[i, j]
+    }
+}
+
+void _dynorb_rrow(const real *A, int m, int n, int i, real *row)
+{
+    for (int j = 0; j < n; j++)
+    {
+        row[j] = _dynorb_rel(A, m, i, j); // Accessing element A[i, j]
+    }
+}
+
+/* =====================================
+ * DYNORB USER SUPPORT FUNCTIONS:
+ * ===================================== */
 
 void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff)
 {
@@ -723,43 +485,54 @@ void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, rea
     _dynorb_rvcopy(3, AA2_, &ff[9]);
 }
 
-/* CORE FUNCTIONS: */
-
-real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, real tol)
-{ // Implementation of Bisection Method
-    // Midpoit
-    real c = 0;
-    // Number of Iteration: /T TODO: fix fabs, works inly with double
-    real n = ceil(log(fabs(b - a) / tol) / log(2));
-    for (int i = 0; i < n; ++i)
-    {
-        c = 0.5 * (a + b); // midpoint update
-        real f_a = function(a, funParams);
-        real f_c = function(c, funParams);
-        if (f_a * f_c > 0)
-        {
-            a = c;
-        }
-        else
-        {
-            b = c;
-        }
-    }
-    return c;
+void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff)
+{
+    // Parameters:
+    (void)t; // Useless, just to compile
+    _dynorb_twoBodyRelParams *Params = (_dynorb_twoBodyRelParams *)params;
+    // real m = Params->m;
+    real mu = Params->mu;
+    // Position:
+    real rr_[3] = {yy[0], yy[1], yy[2]};
+    // Velocity:
+    real vv_[3] = {yy[3], yy[4], yy[5]};
+    // Acceleration:
+    real aa_[3];
+    // Compute Acceleration:
+    _dynorb_rvcopy(3, rr_, aa_);
+    real r = _dynorb_rnrm2(3, rr_);
+    _dynorb_rscal(3, -1.0 * (mu / (r * r * r)), aa_); // (R2-R1)/r^3
+    // Update State Derivatives:
+    _dynorb_rvcopy(3, vv_, &ff[0]);
+    _dynorb_rvcopy(3, aa_, &ff[3]);
 }
 
-void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy)
-{
-    real fgdfdg[4];
-    _dynorb_LagrangeFunctionsFrom_yy0_Dth(mu, Dth, yy0, fgdfdg);
-    // Computation of rr:
-    _dynorb_rvcopy(3, &yy0[0], &yy[0]);
-    _dynorb_rscal(3, fgdfdg[0], &yy[0]);
-    _dynorb_raxpy(3, fgdfdg[1], &yy0[3], &yy[0]);
-    // Computation of vv:
-    _dynorb_rvcopy(3, &yy0[0], &yy[3]);
-    _dynorb_rscal(3, fgdfdg[2], &yy[3]);
-    _dynorb_raxpy(3, fgdfdg[3], &yy0[3], &yy[3]);
+void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *params, real *ff)
+{ // Computes the components of the relative acceleration for the restricted 3 - body problem,
+    // using Equations 2.192a and 2.192b (pag. 126)
+
+    // Parameters:
+    (void)t;
+    _dynorb_threeBodyRestrictParams *p = (_dynorb_threeBodyRestrictParams *)params;
+    // State Components:
+    real x = yy[0];
+    real y = yy[1];
+    real vx = yy[2];
+    real vy = yy[3];
+    // Distance from Body 1 and Body 2:
+    real r1 = sqrt((pow((x + p->pi_2 * p->r12), 2.0)) + (pow(y, 2.0)));
+    real r2 = sqrt((pow((x - p->pi_1 * p->r12), 2.0)) + (pow(y, 2.0)));
+    // Common factors:
+    real _2W = 2.0 * p->W;
+    real _W2 = pow(p->W, 2.0);
+    real _r1_3 = pow(r1, 3.0);
+    real _r2_3 = pow(r2, 3.0);
+
+    // State derivatives of restricted 3-body problem: ff = dyy/dt
+    ff[0] = yy[2];
+    ff[1] = yy[3];
+    ff[2] = _2W * vy + _W2 * x - (p->mu1 * (x - p->x1) / _r1_3) - (p->mu2 * (x - p->x2) / _r2_3);
+    ff[3] = -1.0 * _2W * vx + _W2 * y - ((p->mu1 / _r1_3) + (p->mu2 / _r2_3)) * y;
 }
 
 void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg)
@@ -783,25 +556,18 @@ void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const 
     fgdfdg[3] = 1 - mu * r0 / (h0 * h0) * (1 - c);
 }
 
-void _dynorb_rcol(const real *A, int m, int j, real *column)
+void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy)
 {
-    for (int i = 0; i < m; i++)
-    {
-        column[i] = _dynorb_rel(A, m, i, j); // Accessing element A[i, j]
-    }
-}
-
-void _dynorb_rrow(const real *A, int m, int n, int i, real *row)
-{
-    for (int j = 0; j < n; j++)
-    {
-        row[j] = _dynorb_rel(A, m, i, j); // Accessing element A[i, j]
-    }
-}
-
-static inline real _dynorb_rel(const real *A, int m, int i, int j)
-{
-    return A[(j * m) + i];
+    real fgdfdg[4];
+    _dynorb_LagrangeFunctionsFrom_yy0_Dth(mu, Dth, yy0, fgdfdg);
+    // Computation of rr:
+    _dynorb_rvcopy(3, &yy0[0], &yy[0]);
+    _dynorb_rscal(3, fgdfdg[0], &yy[0]);
+    _dynorb_raxpy(3, fgdfdg[1], &yy0[3], &yy[0]);
+    // Computation of vv:
+    _dynorb_rvcopy(3, &yy0[0], &yy[3]);
+    _dynorb_rscal(3, fgdfdg[2], &yy[3]);
+    _dynorb_raxpy(3, fgdfdg[3], &yy0[3], &yy[3]);
 }
 
 void _dynorb_free(_dynorb_odeSys *ode_system)
@@ -810,12 +576,10 @@ void _dynorb_free(_dynorb_odeSys *ode_system)
     free(ode_system->YY_t);
 }
 
-void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration,
-                               _dynorb_odeFun *ode_function, void *odeParams, real *yy0,
-                               const int sys_size, const real t0, const real t1, const real h)
+void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration, _dynorb_odeFun *ode_function, void *odeParams, real *yy0, const int sys_size, const real t0, const real tf, const real h)
 {
     // Compute (initial) number of steps:
-    int n_steps = ceil(((t1 - t0) / h)); // int n_steps = (int)((((t1 - t0)) / h) + 1.0);
+    int n_steps = ceil(((tf - t0) / h)); // int n_steps = (int)((((tf - t0)) / h) + 1.0);
 
     // Allocate memory for the time steps and solution array
     ode_system->tt = (real *)calloc(n_steps, sizeof(real));
@@ -847,12 +611,12 @@ void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *s
     ode_system->odeParams = odeParams;
     ode_system->sys_size = sys_size;
     ode_system->t0 = t0;
-    ode_system->t1 = t1;
+    ode_system->tf = tf;
     ode_system->yy0 = yy0;
 
     // Copy values in solver_configuration structure:
     solver_configuration->t0 = t0;
-    solver_configuration->t1 = t1;
+    solver_configuration->tf = tf;
     solver_configuration->h = h;
     solver_configuration->n_steps = n_steps;
 
@@ -861,12 +625,10 @@ void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *s
     printf("Number of Steps: <solv_conf.n_steps = %d>\n", solver_configuration->n_steps);
 }
 
-void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration,
-                              _dynorb_odeFun *ode_function, void *odeParams, real *yy0,
-                              const int sys_size, const real t0, const real t1, const real h)
+void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration, _dynorb_odeFun *ode_function, void *odeParams, real *yy0, const int sys_size, const real t0, const real tf, const real h)
 {
     // Compute (initial) number of steps:
-    int n_steps = ceil(((t1 - t0) / h)); // int n_steps = (int)((((t1 - t0)) / h) + 1.0);
+    int n_steps = ceil(((tf - t0) / h)); // int n_steps = (int)((((tf - t0)) / h) + 1.0);
 
     // Print stack memory allocation instructions
     ode_system->tt = NULL;
@@ -877,18 +639,45 @@ void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *so
     ode_system->odeParams = odeParams;
     ode_system->sys_size = sys_size;
     ode_system->t0 = t0;
-    ode_system->t1 = t1;
+    ode_system->tf = tf;
     ode_system->yy0 = yy0;
 
     // Copy values in solver_configuration structure:
     solver_configuration->t0 = t0;
-    solver_configuration->t1 = t1;
+    solver_configuration->tf = tf;
     solver_configuration->h = h;
     solver_configuration->n_steps = n_steps;
 
     // Print:
     printf("\nTime Step Size: <h = %f [s]>\n", solver_configuration->h);
     printf("Number of Steps: <solv_conf.n_steps = %d>\n", solver_configuration->n_steps);
+}
+
+/* =====================================
+ * DYNORB CORE FUNCTIONS:
+ * ===================================== */
+
+real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, real tol)
+{ // Implementation of Bisection Method
+    // Midpoit
+    real c = 0;
+    // Number of Iteration: TODO: fix fabs, works inly with double
+    real n = ceil(log(fabs(b - a) / tol) / log(2));
+    for (int i = 0; i < n; ++i)
+    {
+        c = 0.5 * (a + b); // midpoint update
+        real f_a = function(a, funParams);
+        real f_c = function(c, funParams);
+        if (f_a * f_c > 0)
+        {
+            a = c;
+        }
+        else
+        {
+            b = c;
+        }
+    }
+    return c;
 }
 
 void _dynorb_rrk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
@@ -899,7 +688,7 @@ void _dynorb_rrk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
-    real t1 = sys->t1;                              // Final time
+    real tf = sys->tf;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
 
@@ -936,7 +725,7 @@ void _dynorb_rrk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
         tt[step] = t;
 
-        if (t > t1)
+        if (t > tf)
         {
             printf("\n_dynorb_rrk1: Breaking From Loop at <t = %f [s]>", t);
             break;
@@ -952,7 +741,7 @@ void _dynorb_rrk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
-    real t1 = sys->t1;                              // Final time
+    real tf = sys->tf;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
     const real h = solver_configuration->h;
@@ -989,7 +778,7 @@ void _dynorb_rrk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
         tt[step] = t;
         // Safety check:
-        if (t > t1)
+        if (t > tf)
         {
             printf("\n_dynorb_rrk2: Breaking From Loop at <t = %f [s]>", t);
             break;
@@ -1005,7 +794,7 @@ void _dynorb_rrk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
-    real t1 = sys->t1;                              // Final time
+    real tf = sys->tf;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
     const real h = solver_configuration->h;
@@ -1054,7 +843,7 @@ void _dynorb_rrk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
         tt[step] = t;
 
-        if (t > t1)
+        if (t > tf)
         {
             printf("\n_dynorb_rrk3: Breaking From Loop at <t = %f [s]>", t);
             break;
@@ -1070,7 +859,7 @@ void _dynorb_rrk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
-    real t1 = sys->t1;                              // Final time
+    real tf = sys->tf;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
     const real h = solver_configuration->h;
@@ -1119,13 +908,14 @@ void _dynorb_rrk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
         _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
         tt[step] = t;
 
-        if (t > t1)
+        if (t > tf)
         {
             printf("\n_dynorb_rrk3: Breaking From Loop at <t = %f [s]>", t);
             break;
         }
     }
 }
+
 void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration, const real tol, const int max_iter)
 {
     // Extract pointers from the input structs
@@ -1134,7 +924,7 @@ void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     const real t0 = sys->t0;                        // Initial time
-    const real t1 = sys->t1;                        // Final time
+    const real tf = sys->tf;                        // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
     const real h = solver_configuration->h;
@@ -1226,7 +1016,7 @@ void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration
         _dynorb_rvcopy(sys_size, yy, &YY_t[step * sys_size]);
 
         // Stop if the final time is exceeded
-        if (t >= t1)
+        if (t >= tf)
         {
             printf("\n_dynorb_rheun: Breaking from loop at t = %f [s]\n", t);
             break;
@@ -1247,7 +1037,7 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
     const int sys_size = sys->sys_size;             // Size of System
     const real *yy0 = sys->yy0;                     // Pointer to Initial Conditions
     real t0 = sys->t0;                              // Initial time
-    real t1 = sys->t1;                              // Final time
+    real tf = sys->tf;                              // Final time
     real *tt = sys->tt;                             // Time steps of solution
     real *YY_t = sys->YY_t;                         // Solution Array
     real h = solver_configuration->h;               // Initial step
@@ -1291,7 +1081,7 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
     t = t0;
     _dynorb_rvcopy(sys_size, yy0, yy); // Current state at t0 = initial state
 
-    while (t < t1)
+    while (t < tf)
     {
         // printf("\n\nBegin time step t = %f | h = %f\n", t, h);
         hmin = 16.0 * (_dynorb_eps(t)); // Update hmin
@@ -1349,7 +1139,7 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
         else // Update solution
         {
             // Safety check:
-            h = _dynorb_rmin(h, fabs(t1 - t));
+            h = _dynorb_rmin(h, fabs(tf - t));
             // Update Time
             t += h;
 

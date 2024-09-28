@@ -66,8 +66,6 @@ int main(void)
     printf("\nDONE INTEGRATING\n");
     printf("Elapsed time: %f micro-seconds\n", time_taken);
 
-    //
-
     /* ==========================================================
      * DATA LOG: Save data
      * ========================================================== */
