@@ -40,12 +40,134 @@ int main(void)
     printf("\n");
     printf("Elapsed Time Dt = %g [s]\n", Dt);
     printf("\n");
-    printf("Final Position Vector [km]:\nrr = \n");
+    printf("Final Position Vector (Semi-analytical) [km]:\nrr = \n");
     _dynorb_rmprint(&yy[0], 3, 1);
     printf("\n");
-    printf("Final Velocity Vector [km/s]:\nvv = \n");
+    printf("Final Velocity Vector (Semi-analytical) [km/s]:\nvv = \n");
     _dynorb_rmprint(&yy[3], 3, 1);
     printf("------------------------------------------------------------\n");
+
+    /* ==========================================================
+     * DYNORB: Numerical Integration
+     * ========================================================== */
+
+    /* ----------------------------------------------------------
+     * STEP 1: System and Solver Parameters, Initial Conditions
+     * ---------------------------------------------------------- */
+
+    // Two Body System Parameters:
+    _dynorb_twoBodyRelParams twoBodyParams;
+    twoBodyParams.mu = mu_E; // [km^3/s^2]
+
+    // Solver Parameters:
+    int sys_size = 6;  // Size of twoBodySys
+    real t0 = 0.0;     // Initial Time [s]
+    real t1 = t0 + Dt; // Final Time [s] (4 hours)
+    real h = 1;        // Time step [s]
+
+    /* ----------------------------------------------------------
+     * STEP 2: Confugure ode-system and solver:
+     * ---------------------------------------------------------- */
+
+    // Structures declaration:
+    _dynorb_odeSys twoBodySys;
+    _dynorb_solverConf solverConf;
+    // Configuration
+    _dynorb_configure_dynamic(&twoBodySys, &solverConf,
+                              &_dynorb_twoBodyRelFun, &twoBodyParams, yy0,
+                              sys_size, t0, t1, h);
+
+    /* ----------------------------------------------------------
+     * STEP 3: Numerical Integration:
+     * ---------------------------------------------------------- */
+    _dynorb_rrk4(&twoBodySys, &solverConf);
+
+    printf("\n");
+    printf("------------------------------------------------------------\n");
+    printf("Final Position Vector (Numerical Integration) [km]:\nrr = \n");
+    _dynorb_rmprint(&twoBodySys.YY_t[(solverConf.n_steps - 1) * twoBodySys.sys_size], 3, 1);
+    printf("\n");
+    printf("Final Velocity Vector (Numerical Integration) [km/s]:\nvv = \n");
+    _dynorb_rmprint(&twoBodySys.YY_t[(solverConf.n_steps - 1) * twoBodySys.sys_size + 3], 3, 1);
+    printf("------------------------------------------------------------\n");
+
+    /* ==========================================================
+     * DATA LOG: Save data
+     * ========================================================== */
+
+    /* ----------------------------------------------------------
+     * STEP 4: Open files and log data:
+     * ---------------------------------------------------------- */
+    FILE *outfile1 = fopen("./data/ex_03_07_a.txt", "w");
+    if (outfile1 == NULL)
+    {
+        perror("Error opening file");
+        return 1;
+    }
+
+    FILE *outfile2 = fopen("./data/ex_03_07_b.txt", "w");
+    if (outfile2 == NULL)
+    {
+        perror("Error opening file");
+        return 1;
+    }
+
+    // Loop over data to log it:
+    for (int i = 0; i < solverConf.n_steps; i++)
+    {
+        // [Time, rr1, rr2, vv, vv]
+        fprintf(outfile1, "%.20f %.20f %.20f %.20f %.20f %.20f %.20f \n",
+                twoBodySys.tt[i],
+                twoBodySys.YY_t[i * twoBodySys.sys_size], twoBodySys.YY_t[i * twoBodySys.sys_size + 1], twoBodySys.YY_t[i * twoBodySys.sys_size + 2],
+                twoBodySys.YY_t[i * twoBodySys.sys_size + 3], twoBodySys.YY_t[i * twoBodySys.sys_size + 4], twoBodySys.YY_t[i * twoBodySys.sys_size + 5]);
+    }
+
+    // Initial Time and State:
+    fprintf(outfile2, "%.20f %.20f %.20f %.20f %.20f %.20f %.20f \n",
+            t0, yy0[0], yy0[1], yy0[2], yy0[3], yy0[4], yy0[5]);
+    // Final Time and State:
+    fprintf(outfile2, "%.20f %.20f %.20f %.20f %.20f %.20f %.20f \n",
+            t1, yy[0], yy[1], yy[2], yy[3], yy[4], yy[5]);
+
+    /* ----------------------------------------------------------
+     * STEP 5: Memory Deallocation (dynamic) and file closure:
+     * ---------------------------------------------------------- */
+    _dynorb_free(&twoBodySys);
+    fclose(outfile1);
+    fclose(outfile2);
+    printf("\nDONE FREEING MEMORY AND LOGGING DATA\n");
+
+    /* ==========================================================
+     * GNUPLOT: Use Gnuplot to plot the data
+     * ========================================================== */
+
+    /* ----------------------------------------------------------
+     * STEP 6: Plot data:
+     * ---------------------------------------------------------- */
+    const char *plot_command1 =
+        "set terminal qt enhanced\n"
+        "set title 'Example 7 Chapter 03: 3D Trajectories - Relative motion - ECI Coordinates'\n"
+        "set xlabel 'X [km]'\n"
+        "set ylabel 'Y [km]'\n"
+        "set zlabel 'Z [km]'\n"
+        "set size ratio -1\n"
+        "set grid\n"
+        "set view 0, 0\n"
+        // "set key right top\n" // Add this line to move the legend
+        "set key at screen 0.999,0.999\n" // Example for finer adjustment
+        "splot './data/ex_03_07_a.txt' using 2:3:4 with points pt 7 ps 0.3 lc rgb 'black' title 'orbit', \\\n"
+        "      './data/ex_03_07_a.txt' using 5:6:7 with points pt 7 ps 10 lc rgb 'blue' notitle, \\\n"
+        "      './data/ex_03_07_a.txt' every ::0::0 using 2:3:4 with points pt 7 ps 1 lc rgb 'green' title 'start', \\\n"
+        "      './data/ex_03_07_a.txt' every ::3599::3599 using 2:3:4 with points pt 7 ps 1 lc rgb 'red' title 'end', \\\n"
+        "      './data/ex_03_07_b.txt' every ::0::0 using 2:3:4 with points pt 1 ps 5 lc rgb 'green' title 'kepStart', \\\n"
+        "      './data/ex_03_07_b.txt' every ::1::1 using 2:3:4 with points pt 1 ps 5 lc rgb 'red' title 'kepEnd'\n";
+
+    FILE *gnuplot1 = popen("gnuplot -persistent", "w");
+    if (gnuplot1)
+    {
+        fprintf(gnuplot1, "%s", plot_command1);
+        pclose(gnuplot1);
+    }
 
     return 0;
 }
