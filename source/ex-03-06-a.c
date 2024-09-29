@@ -3,8 +3,8 @@
 #define USE_CBLAS
 #include "..\include\dynorb.h"
 
-/*  Example 3.5 (Chapter 3, pag.170):This program uses Algorithm 3.2 and the data
-    of Example 3.5 to solve Kepler’s equation.
+/*  Example 3.6 (Chapter 3, pag.178):This program uses Algorithm 3.3 and the data
+    of Example 3.6 to solve Kepler’s equation.
     REF: Curtis, H.D., 2020. Orbital mechanics for engineering students (3rd Edit.)*/
 
 int main(void)
@@ -17,7 +17,7 @@ int main(void)
     real e = 1.4682;                  // Eccentricity [-]
     real Dt = 1.0 * 60 * 60;          // Time Passed from th0 [s]
 
-    // EXERCISE 3.1:
+    // EXERCISE 3.6:
     real h = sqrt(mu_E * r0 * (1 + e * cos(th0)));                             // Specific Angular Momentum [km^2/s]
     real th_inf = acos(-1.0 / e);                                              // True Anomaly of the asymptote [rad]
     real r_th0 = ((h * h) / mu_E) * (1 / (1 + e * cos(th0)));                  // Radius at th0 = 100 deg [km]

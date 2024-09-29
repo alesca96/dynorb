@@ -184,7 +184,7 @@ void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *so
 
 real _dynorb_rstumpffS(const real z);
 real _dynorb_rstumpffC(const real z);
-real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, const real tol);
+real _dynorb_rbisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, const real tol);
 void _dynorb_rrk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 void _dynorb_rrk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 void _dynorb_rrk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
@@ -200,9 +200,12 @@ void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, rea
 void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *params, real *ff);
 real _dynorb_rkeplerH(real e, real M_hyperbola, real tol);
 real _dynorb_rkeplerE(real e, real M_ellipse, real tol);
-void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg);
+void _dynorb_rlagrangeCoefficientsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg);
 void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy);
 real _dynorb_rkeplerUniversal(const real mu, const real Dt, const real r0, const real vr0, const real alpha, const real tol, const int max_iter);
+void _dynorb_rfgFromChi(const real mu, const real Dt, const real chi, const real r0, const real alpha, real *fgdfdg);
+void _dynorb_rdfdgFromChi(const real mu, const real chi, const real r, const real r0, const real alpha, real *fgdfdg);
+void _dynorb_ryy_From_yy0_Dt(const real mu, const real Dt, const real *yy0, real *yy, const real tol, const int max_iter);
 
 #endif // DYNORB_H_
 /*
@@ -420,7 +423,7 @@ void _dynorb_rmprint(const real *A, const int m, const int n)
         printf("    ");
         for (int j = 0; j < n; ++j)
         {
-            printf("%.4f", _dynorb_rel(A, m, i, j));
+            printf("%.5f", _dynorb_rel(A, m, i, j));
             if (j < n - 1)
             {
                 printf(", ");
@@ -589,7 +592,7 @@ real _dynorb_rstumpffC(const real z)
     return C;
 }
 
-real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, const real tol)
+real _dynorb_rbisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, const real tol)
 { // Implementation of Bisection Method
     // Midpoit
     real c = 0;
@@ -1235,7 +1238,7 @@ real _dynorb_rkeplerE(real e, real M_ellipse, real tol)
     return E;
 }
 
-void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg)
+void _dynorb_rlagrangeCoefficientsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg)
 {
     // Norms
     real r0 = _dynorb_rnrm2(3, &yy0[0]);
@@ -1259,7 +1262,7 @@ void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const 
 void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy)
 {
     real fgdfdg[4];
-    _dynorb_LagrangeFunctionsFrom_yy0_Dth(mu, Dth, yy0, fgdfdg);
+    _dynorb_rlagrangeCoefficientsFrom_yy0_Dth(mu, Dth, yy0, fgdfdg);
     // Computation of rr:
     _dynorb_rvcopy(3, &yy0[0], &yy[0]);
     _dynorb_rscal(3, fgdfdg[0], &yy[0]);
@@ -1307,4 +1310,63 @@ real _dynorb_rkeplerUniversal(const real mu, const real Dt, const real r0, const
     return chi;
 }
 
+void _dynorb_rfgFromChi(const real mu, const real Dt, const real chi, const real r0, const real alpha, real *fg)
+{ // Computes Lagrange coefficients from Universal Variable
+    // Temporary variables:
+    real chi2 = chi * chi;
+    real chi3 = pow(chi, 3.0);
+    real sqrt_mu = sqrt(mu);
+    // Variable z:
+    real z = alpha * chi2;
+    // Stumpff Functions:
+    real S = _dynorb_rstumpffS(z);
+    real C = _dynorb_rstumpffC(z);
+    // Lagarange coefficients (Formula 3.69, pag.181):
+    fg[0] = 1.0 - ((chi2 / r0) * C);
+    fg[1] = Dt - ((chi3 * S) / sqrt_mu);
+}
+void _dynorb_rdfdgFromChi(const real mu, const real chi, const real r, const real r0, const real alpha, real *dfdg)
+{ // Computes time-derivatives of Lagrange coefficients from Universal Variable
+    // Temporary variables:
+    real chi2 = chi * chi;
+    real chi3 = pow(chi, 3.0);
+    real sqrt_mu = sqrt(mu);
+    // Variable z:
+    real z = alpha * chi2;
+    // Stumpff Functions:
+    real S = _dynorb_rstumpffS(z);
+    real C = _dynorb_rstumpffC(z);
+    // Lagarange coefficients (Formula 3.69, pag.181):
+    dfdg[0] = (sqrt_mu / (r * r0)) * ((alpha * chi3 * S) - chi);
+    dfdg[1] = 1.0 - ((chi2 / r) * C);
+}
+
+void _dynorb_ryy_From_yy0_Dt(const real mu, const real Dt, const real *yy0, real *yy, const real tol, const int max_iter)
+{
+    // Vector Norms:
+    real r0 = _dynorb_rnrm2(3, &yy0[0]);
+    real v0 = _dynorb_rnrm2(3, &yy0[3]);
+    // Radial Component of Velocity :
+    real vr0 = (_dynorb_rdot(3, &yy0[0], &yy0[3])) / r0;
+    // Reciprocal of semi-major axis:
+    real alpha = (2.0 / r0) - ((v0 * v0) / mu);
+    // Universal Anomaly Chi:
+    real chi = _dynorb_rkeplerUniversal(mu, Dt, r0, vr0, alpha, tol, max_iter);
+    // Compute f and g:
+    real fg[2];
+    _dynorb_rfgFromChi(mu, Dt, chi, r0, alpha, fg);
+    // Final Position Vector rr = f*rr0 + g*vv0:
+    _dynorb_rvcopy(3, &yy0[0], &yy[0]);
+    _dynorb_rscal(3, fg[0], &yy[0]);
+    _dynorb_raxpy(3, fg[1], &yy0[3], &yy[0]);
+    // Norm of rr:
+    real r = _dynorb_rnrm2(3, &yy[0]);
+    // Compute time-derivatives f and g:
+    real dfdg[2];
+    _dynorb_rdfdgFromChi(mu, chi, r, r0, alpha, dfdg);
+    // Final Velocity Vector vv = df*rr0 + dg*vv0:
+    _dynorb_rvcopy(3, &yy0[0], &yy[3]);         // vv<--rr0
+    _dynorb_rscal(3, dfdg[0], &yy[3]);          // vv<--df*vv
+    _dynorb_raxpy(3, dfdg[1], &yy0[3], &yy[3]); //  vv<--vv + dg*vv0
+}
 #endif // DYNORB_IMPLEMENTATION

@@ -15,7 +15,7 @@ int main(void)
     real th = _dynorb_deg2rad(100.0);    // True Anomaly [rad]
     real mu_E = (real)_dynorb_MU_E;      // Earth grav. parameter [km^3 /s^2]
 
-    /* EXERCISE 3.1: */
+    /* EXERCISE 3.5: */
     real h = rp * vp;                                                           // Specific Angular Momentum [km^2/s]
     real e = ((h * h) / (mu_E * rp)) - 1.0;                                     // Eccentricity [-]
     real th_inf = acos(-1.0 / e);                                               // True Anomaly of the asymptote [rad]

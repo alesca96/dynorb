@@ -37,7 +37,7 @@ int main(void)
     real L[3];
     for (int i = 0; i < 3; ++i)
     {
-        L[i] = _dynorb_bisect(LagrangeEarthMoon, &p, xxl[i], xxu[i], 1.e-6);
+        L[i] = _dynorb_rbisect(LagrangeEarthMoon, &p, xxl[i], xxu[i], 1.e-6);
         printf("Episolon Lagrange Point L(xxl = %g, xxu= %g) = %g\n", xxl[i], xxu[i], L[i]);
     }
 

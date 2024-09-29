@@ -38,7 +38,7 @@ int main(void)
 
     // Lagrange Functions:
     real fgdfdg[4];
-    _dynorb_LagrangeFunctionsFrom_yy0_Dth(mu_E, Dth_rad, yy0, fgdfdg);
+    _dynorb_rlagrangeCoefficientsFrom_yy0_Dth(mu_E, Dth_rad, yy0, fgdfdg);
 
     // Print:
     printf("\n");
