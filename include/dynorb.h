@@ -174,21 +174,14 @@ void _dynorb_rrow(const real *A, int m, int n, int i, real *row);
  * DYNORB USER SUPPORT FUNCTIONS:
  * ==================================================================================================== */
 
-void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff);
-void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff);
-void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *params, real *ff);
-real _dynorb_rkeplerH(real e, real M_hyperbola, real tol);
-real _dynorb_rkeplerE(real e, real M_ellipse, real tol);
-void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg);
-void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy);
 void _dynorb_free(_dynorb_odeSys *ode_system);
 void _dynorb_configure_dynamic(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration, _dynorb_odeFun *ode_function, void *odeParams, real *yy0, const int sys_size, const real t0, const real tf, const real h);
 void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *solver_configuration, _dynorb_odeFun *ode_function, void *odeParams, real *yy0, const int sys_size, const real t0, const real tf, const real h);
 
 /* ====================================================================================================
- * DYNORB CORE FUNCTIONS:
+ * DYNORB NUMERICS:
  * ==================================================================================================== */
-real _dynorb_rkeplerUniversal(const real mu, const real Dt, const real r0, const real vr0, const real alpha, const real tol, const int max_iter);
+
 real _dynorb_rstumpffS(const real z);
 real _dynorb_rstumpffC(const real z);
 real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, const real tol);
@@ -197,6 +190,19 @@ void _dynorb_rrk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration)
 void _dynorb_rrk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 void _dynorb_rrk4(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 void _dynorb_rheun(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration, const real tol, const int max_iter);
+
+/* ====================================================================================================
+ * DYNORB ORBITAL MECHANICS FUNCTIONS:
+ * ==================================================================================================== */
+
+void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff);
+void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff);
+void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *params, real *ff);
+real _dynorb_rkeplerH(real e, real M_hyperbola, real tol);
+real _dynorb_rkeplerE(real e, real M_ellipse, real tol);
+void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg);
+void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy);
+real _dynorb_rkeplerUniversal(const real mu, const real Dt, const real r0, const real vr0, const real alpha, const real tol, const int max_iter);
 
 #endif // DYNORB_H_
 /*
@@ -458,163 +464,6 @@ void _dynorb_rrow(const real *A, int m, int n, int i, real *row)
  * DYNORB USER SUPPORT FUNCTIONS:
  * ==================================================================================================== */
 
-void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff)
-{
-    // Parameters:
-    (void)t; // Useless, just to compile
-    _dynorb_twoBodyAbsParams *Params = (_dynorb_twoBodyAbsParams *)params;
-    real m1 = Params->m1;
-    real m2 = Params->m2;
-    real G = Params->G;
-    // Position:
-    real RR1_[3] = {yy[0], yy[1], yy[2]};
-    real RR2_[3] = {yy[3], yy[4], yy[5]};
-    // Velocity:
-    real VV1_[3] = {yy[6], yy[7], yy[8]};
-    real VV2_[3] = {yy[9], yy[10], yy[11]};
-    // Acceleration:
-    real AA1_[3];
-    real AA2_[3];
-    // Compute Acceleration:
-    real RR_diff[3];
-    _dynorb_rvcopy(3, RR2_, RR_diff);
-    _dynorb_raxpy(3, -1.0, RR1_, RR_diff);
-    real r = _dynorb_rnrm2(3, RR_diff);
-    _dynorb_rscal(3, (1 / (r * r * r)), RR_diff); // (R2-R1)/r^3
-    _dynorb_rvcopy(3, RR_diff, AA1_);             // Compute AA1_ and AA2_
-    _dynorb_rvcopy(3, RR_diff, AA2_);             // Compute AA1_ and AA2_
-    _dynorb_rscal(3, (G * m2), AA1_);             // Compute AA1_ and AA2_
-    _dynorb_rscal(3, (-1.0 * G * m1), AA2_);      // Compute AA1_ and AA2_
-    // Update State Derivatives:
-    _dynorb_rvcopy(3, VV1_, &ff[0]);
-    _dynorb_rvcopy(3, VV2_, &ff[3]);
-    _dynorb_rvcopy(3, AA1_, &ff[6]);
-    _dynorb_rvcopy(3, AA2_, &ff[9]);
-}
-
-void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff)
-{
-    // Parameters:
-    (void)t; // Useless, just to compile
-    _dynorb_twoBodyRelParams *Params = (_dynorb_twoBodyRelParams *)params;
-    // real m = Params->m;
-    real mu = Params->mu;
-    // Position:
-    real rr_[3] = {yy[0], yy[1], yy[2]};
-    // Velocity:
-    real vv_[3] = {yy[3], yy[4], yy[5]};
-    // Acceleration:
-    real aa_[3];
-    // Compute Acceleration:
-    _dynorb_rvcopy(3, rr_, aa_);
-    real r = _dynorb_rnrm2(3, rr_);
-    _dynorb_rscal(3, -1.0 * (mu / (r * r * r)), aa_); // (R2-R1)/r^3
-    // Update State Derivatives:
-    _dynorb_rvcopy(3, vv_, &ff[0]);
-    _dynorb_rvcopy(3, aa_, &ff[3]);
-}
-
-void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *params, real *ff)
-{ // Computes the components of the relative acceleration for the restricted 3 - body problem,
-    // using Equations 2.192a and 2.192b (pag. 126)
-
-    // Parameters:
-    (void)t;
-    _dynorb_threeBodyRestrictParams *p = (_dynorb_threeBodyRestrictParams *)params;
-    // State Components:
-    real x = yy[0];
-    real y = yy[1];
-    real vx = yy[2];
-    real vy = yy[3];
-    // Distance from Body 1 and Body 2:
-    real r1 = sqrt((pow((x + (p->pi_2 * p->r12)), 2.0)) + (pow(y, 2.0)));
-    real r2 = sqrt((pow((x - p->pi_1 * p->r12), 2.0)) + (pow(y, 2.0)));
-    // Common factors:
-    real _2W = 2.0 * p->W;
-    real _W2 = pow(p->W, 2.0);
-    real _r1_3 = pow(r1, 3.0);
-    real _r2_3 = pow(r2, 3.0);
-
-    // State derivatives of restricted 3-body problem: ff = dyy/dt
-    ff[0] = yy[2];
-    ff[1] = yy[3];
-    ff[2] = _2W * vy + _W2 * x - (p->mu1 * (x - p->x1) / _r1_3) - (p->mu2 * (x - p->x2) / _r2_3);
-    ff[3] = -1.0 * _2W * vx + _W2 * y - ((p->mu1 / _r1_3) + (p->mu2 / _r2_3)) * y;
-}
-
-real _dynorb_rkeplerH(real e, real M_hyperbola, real tol)
-{
-    // Initial estimate (rough):
-    real F = M_hyperbola;
-    real ratio = 1.0;
-    while (fabs(ratio) > tol)
-    {
-        // Update ratio:
-        ratio = (e * sinh(F) - F - M_hyperbola) / (e * cosh(F) - 1);
-        // Update F:
-        F -= ratio;
-    }
-    return F;
-}
-
-real _dynorb_rkeplerE(real e, real M_ellipse, real tol)
-{
-    // Initial estimate of the root (Prussing & Conway):
-    real E;
-    if (M_ellipse < _dynorb_PI)
-    {
-        E = M_ellipse + 0.5 * e;
-    }
-    else
-    {
-        E = M_ellipse - 0.5 * e;
-    }
-    real ratio = 1.0;
-    while (fabs(ratio) > tol)
-    {
-        // Update ratio:
-        ratio = (E - e * sin(E) - M_ellipse) / (1 - e * cos(E));
-        // Update E:
-        E -= ratio;
-    }
-    return E;
-}
-
-void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg)
-{
-    // Norms
-    real r0 = _dynorb_rnrm2(3, &yy0[0]);
-    real v0 = _dynorb_rnrm2(3, &yy0[3]);
-    // Radial Component of velocity:
-    real vr0 = _dynorb_rdot(3, &yy0[0], &yy0[3]) / r0;
-    // Magnitude of (constant) angular momentum:
-    real h0 = r0 * sqrt((v0 * v0) - (vr0 * vr0));
-    real s = sin(Dth);
-    real c = cos(Dth);
-    // Equation 2.152 :
-    real r = ((h0 * h0) / mu) / ((1 + ((((h0 * h0) / (mu * r0)) - 1) * c) - ((h0 * vr0 * s) / mu)));
-    // Equations 2.158a & b :
-    fgdfdg[0] = 1 - (mu * r * (1 - c) / (h0 * h0));
-    fgdfdg[1] = r * r0 * s / h0;
-    // Equations 2.158c & d :
-    fgdfdg[2] = (mu / h0) * (vr0 / h0 * (1 - c) - s / r0);
-    fgdfdg[3] = 1 - mu * r0 / (h0 * h0) * (1 - c);
-}
-
-void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy)
-{
-    real fgdfdg[4];
-    _dynorb_LagrangeFunctionsFrom_yy0_Dth(mu, Dth, yy0, fgdfdg);
-    // Computation of rr:
-    _dynorb_rvcopy(3, &yy0[0], &yy[0]);
-    _dynorb_rscal(3, fgdfdg[0], &yy[0]);
-    _dynorb_raxpy(3, fgdfdg[1], &yy0[3], &yy[0]);
-    // Computation of vv:
-    _dynorb_rvcopy(3, &yy0[0], &yy[3]);
-    _dynorb_rscal(3, fgdfdg[2], &yy[3]);
-    _dynorb_raxpy(3, fgdfdg[3], &yy0[3], &yy[3]);
-}
-
 void _dynorb_free(_dynorb_odeSys *ode_system)
 {
     free(ode_system->tt);
@@ -699,44 +548,8 @@ void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *so
 }
 
 /* ====================================================================================================
- * DYNORB CORE FUNCTIONS:
+ * DYNORB NUMERICS:
  * ==================================================================================================== */
-real _dynorb_rkeplerUniversal(const real mu, const real Dt, const real r0, const real vr0, const real alpha, const real tol, const int max_iter)
-{
-    // Startig value for Universal Variable:
-    real sqrt_mu = sqrt(mu);
-    real chi = sqrt_mu * fabs(alpha) * Dt;
-    // Initialize ratio and number of iterations:
-    real ratio = 1.0;
-    int n_iter = 0;
-    // printf("\n_dynorb_rkeplerUniversal: Iteration [%d] | ratio = %g | Chi = %g\n", n_iter, ratio, chi);
-
-    while (fabs(ratio) > tol && n_iter < max_iter)
-    {
-        // Temporary variables:
-        real A = (r0 * vr0) / sqrt_mu;
-        real B = 1.0 - (alpha * r0);
-        real chi2 = chi * chi;
-        real chi3 = pow(chi, 3.0);
-        real z = alpha * chi2;
-        real S = _dynorb_rstumpffS(z);
-        real C = _dynorb_rstumpffC(z);
-        // Update ratio
-        ratio = ((A * chi2 * C) + (B * chi3 * S) + (r0 * chi) - (sqrt_mu * Dt)) /
-                ((A * chi * (1 - alpha * chi2 * S)) + (B * chi2 * C) + r0);
-        // Update Universal Variable:
-        chi -= ratio;
-        // Update number of iter:
-        ++n_iter;
-        // printf("_dynorb_rkeplerUniversal: Iteration [%d] | ratio = %g | Chi = %g\n", n_iter, ratio, chi);
-    }
-    if (n_iter > max_iter)
-    {
-        printf("\n");
-        printf("_dynorb_rkeplerUniversal: Number of iterations (n_iter = %d) reached limit: %d\n", n_iter, max_iter);
-    }
-    return chi;
-}
 
 real _dynorb_rstumpffS(const real z)
 {
@@ -1294,6 +1107,204 @@ void _dynorb_rrkf45(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuratio
             // printf("End time step t = %f | h = %f\n", t, h);
         }
     }
+}
+
+/* ====================================================================================================
+ * DYNORB ORBITAL MECHANICS FUNCTIONS:
+ * ==================================================================================================== */
+
+void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff)
+{
+    // Parameters:
+    (void)t; // Useless, just to compile
+    _dynorb_twoBodyAbsParams *Params = (_dynorb_twoBodyAbsParams *)params;
+    real m1 = Params->m1;
+    real m2 = Params->m2;
+    real G = Params->G;
+    // Position:
+    real RR1_[3] = {yy[0], yy[1], yy[2]};
+    real RR2_[3] = {yy[3], yy[4], yy[5]};
+    // Velocity:
+    real VV1_[3] = {yy[6], yy[7], yy[8]};
+    real VV2_[3] = {yy[9], yy[10], yy[11]};
+    // Acceleration:
+    real AA1_[3];
+    real AA2_[3];
+    // Compute Acceleration:
+    real RR_diff[3];
+    _dynorb_rvcopy(3, RR2_, RR_diff);
+    _dynorb_raxpy(3, -1.0, RR1_, RR_diff);
+    real r = _dynorb_rnrm2(3, RR_diff);
+    _dynorb_rscal(3, (1 / (r * r * r)), RR_diff); // (R2-R1)/r^3
+    _dynorb_rvcopy(3, RR_diff, AA1_);             // Compute AA1_ and AA2_
+    _dynorb_rvcopy(3, RR_diff, AA2_);             // Compute AA1_ and AA2_
+    _dynorb_rscal(3, (G * m2), AA1_);             // Compute AA1_ and AA2_
+    _dynorb_rscal(3, (-1.0 * G * m1), AA2_);      // Compute AA1_ and AA2_
+    // Update State Derivatives:
+    _dynorb_rvcopy(3, VV1_, &ff[0]);
+    _dynorb_rvcopy(3, VV2_, &ff[3]);
+    _dynorb_rvcopy(3, AA1_, &ff[6]);
+    _dynorb_rvcopy(3, AA2_, &ff[9]);
+}
+
+void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff)
+{
+    // Parameters:
+    (void)t; // Useless, just to compile
+    _dynorb_twoBodyRelParams *Params = (_dynorb_twoBodyRelParams *)params;
+    // real m = Params->m;
+    real mu = Params->mu;
+    // Position:
+    real rr_[3] = {yy[0], yy[1], yy[2]};
+    // Velocity:
+    real vv_[3] = {yy[3], yy[4], yy[5]};
+    // Acceleration:
+    real aa_[3];
+    // Compute Acceleration:
+    _dynorb_rvcopy(3, rr_, aa_);
+    real r = _dynorb_rnrm2(3, rr_);
+    _dynorb_rscal(3, -1.0 * (mu / (r * r * r)), aa_); // (R2-R1)/r^3
+    // Update State Derivatives:
+    _dynorb_rvcopy(3, vv_, &ff[0]);
+    _dynorb_rvcopy(3, aa_, &ff[3]);
+}
+
+void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *params, real *ff)
+{ // Computes the components of the relative acceleration for the restricted 3 - body problem,
+    // using Equations 2.192a and 2.192b (pag. 126)
+
+    // Parameters:
+    (void)t;
+    _dynorb_threeBodyRestrictParams *p = (_dynorb_threeBodyRestrictParams *)params;
+    // State Components:
+    real x = yy[0];
+    real y = yy[1];
+    real vx = yy[2];
+    real vy = yy[3];
+    // Distance from Body 1 and Body 2:
+    real r1 = sqrt((pow((x + (p->pi_2 * p->r12)), 2.0)) + (pow(y, 2.0)));
+    real r2 = sqrt((pow((x - p->pi_1 * p->r12), 2.0)) + (pow(y, 2.0)));
+    // Common factors:
+    real _2W = 2.0 * p->W;
+    real _W2 = pow(p->W, 2.0);
+    real _r1_3 = pow(r1, 3.0);
+    real _r2_3 = pow(r2, 3.0);
+
+    // State derivatives of restricted 3-body problem: ff = dyy/dt
+    ff[0] = yy[2];
+    ff[1] = yy[3];
+    ff[2] = _2W * vy + _W2 * x - (p->mu1 * (x - p->x1) / _r1_3) - (p->mu2 * (x - p->x2) / _r2_3);
+    ff[3] = -1.0 * _2W * vx + _W2 * y - ((p->mu1 / _r1_3) + (p->mu2 / _r2_3)) * y;
+}
+
+real _dynorb_rkeplerH(real e, real M_hyperbola, real tol)
+{
+    // Initial estimate (rough):
+    real F = M_hyperbola;
+    real ratio = 1.0;
+    while (fabs(ratio) > tol)
+    {
+        // Update ratio:
+        ratio = (e * sinh(F) - F - M_hyperbola) / (e * cosh(F) - 1);
+        // Update F:
+        F -= ratio;
+    }
+    return F;
+}
+
+real _dynorb_rkeplerE(real e, real M_ellipse, real tol)
+{
+    // Initial estimate of the root (Prussing & Conway):
+    real E;
+    if (M_ellipse < _dynorb_PI)
+    {
+        E = M_ellipse + 0.5 * e;
+    }
+    else
+    {
+        E = M_ellipse - 0.5 * e;
+    }
+    real ratio = 1.0;
+    while (fabs(ratio) > tol)
+    {
+        // Update ratio:
+        ratio = (E - e * sin(E) - M_ellipse) / (1 - e * cos(E));
+        // Update E:
+        E -= ratio;
+    }
+    return E;
+}
+
+void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg)
+{
+    // Norms
+    real r0 = _dynorb_rnrm2(3, &yy0[0]);
+    real v0 = _dynorb_rnrm2(3, &yy0[3]);
+    // Radial Component of velocity:
+    real vr0 = _dynorb_rdot(3, &yy0[0], &yy0[3]) / r0;
+    // Magnitude of (constant) angular momentum:
+    real h0 = r0 * sqrt((v0 * v0) - (vr0 * vr0));
+    real s = sin(Dth);
+    real c = cos(Dth);
+    // Equation 2.152 :
+    real r = ((h0 * h0) / mu) / ((1 + ((((h0 * h0) / (mu * r0)) - 1) * c) - ((h0 * vr0 * s) / mu)));
+    // Equations 2.158a & b :
+    fgdfdg[0] = 1 - (mu * r * (1 - c) / (h0 * h0));
+    fgdfdg[1] = r * r0 * s / h0;
+    // Equations 2.158c & d :
+    fgdfdg[2] = (mu / h0) * (vr0 / h0 * (1 - c) - s / r0);
+    fgdfdg[3] = 1 - mu * r0 / (h0 * h0) * (1 - c);
+}
+
+void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy)
+{
+    real fgdfdg[4];
+    _dynorb_LagrangeFunctionsFrom_yy0_Dth(mu, Dth, yy0, fgdfdg);
+    // Computation of rr:
+    _dynorb_rvcopy(3, &yy0[0], &yy[0]);
+    _dynorb_rscal(3, fgdfdg[0], &yy[0]);
+    _dynorb_raxpy(3, fgdfdg[1], &yy0[3], &yy[0]);
+    // Computation of vv:
+    _dynorb_rvcopy(3, &yy0[0], &yy[3]);
+    _dynorb_rscal(3, fgdfdg[2], &yy[3]);
+    _dynorb_raxpy(3, fgdfdg[3], &yy0[3], &yy[3]);
+}
+
+real _dynorb_rkeplerUniversal(const real mu, const real Dt, const real r0, const real vr0, const real alpha, const real tol, const int max_iter)
+{
+    // Startig value for Universal Variable:
+    real sqrt_mu = sqrt(mu);
+    real chi = sqrt_mu * fabs(alpha) * Dt;
+    // Initialize ratio and number of iterations:
+    real ratio = 1.0;
+    int n_iter = 0;
+    // printf("\n_dynorb_rkeplerUniversal: Iteration [%d] | ratio = %g | Chi = %g\n", n_iter, ratio, chi);
+
+    while (fabs(ratio) > tol && n_iter < max_iter)
+    {
+        // Temporary variables:
+        real A = (r0 * vr0) / sqrt_mu;
+        real B = 1.0 - (alpha * r0);
+        real chi2 = chi * chi;
+        real chi3 = pow(chi, 3.0);
+        real z = alpha * chi2;
+        real S = _dynorb_rstumpffS(z);
+        real C = _dynorb_rstumpffC(z);
+        // Update ratio
+        ratio = ((A * chi2 * C) + (B * chi3 * S) + (r0 * chi) - (sqrt_mu * Dt)) /
+                ((A * chi * (1 - alpha * chi2 * S)) + (B * chi2 * C) + r0);
+        // Update Universal Variable:
+        chi -= ratio;
+        // Update number of iter:
+        ++n_iter;
+        // printf("_dynorb_rkeplerUniversal: Iteration [%d] | ratio = %g | Chi = %g\n", n_iter, ratio, chi);
+    }
+    if (n_iter > max_iter)
+    {
+        printf("\n");
+        printf("_dynorb_rkeplerUniversal: Number of iterations (n_iter = %d) reached limit: %d\n", n_iter, max_iter);
+    }
+    return chi;
 }
 
 #endif // DYNORB_IMPLEMENTATION
