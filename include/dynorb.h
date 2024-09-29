@@ -71,6 +71,7 @@ const bool real_is_double = 0;
  * DYNORB MACROS:
  * ==================================================================================================== */
 #define _dynorb_PI 3.1415926535897932384626433832795028841971693993751058209749445923078164062
+#define _dynorb_R_E 6378.1370     // [km]
 #define _dynorb_MU_E 398600.44188 // Earth grav. parameter [km^3 /s^2]
 
 /* ====================================================================================================
@@ -176,6 +177,7 @@ void _dynorb_rrow(const real *A, int m, int n, int i, real *row);
 void _dynorb_twoBodyAbsFun(const real t, const real *yy, const void *params, real *ff);
 void _dynorb_twoBodyRelFun(const real t, const real *yy, const void *params, real *ff);
 void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *params, real *ff);
+real _dynorb_rkeplerH(real e, real M_hyperbola, real tol);
 real _dynorb_rkeplerE(real e, real M_ellipse, real tol);
 void _dynorb_LagrangeFunctionsFrom_yy0_Dth(const real mu, const real Dth, const real *yy0, real *fgdfdg);
 void _dynorb_yy_From_yy0_Dth(const real mu, const real Dth, const real *yy0, real *yy);
@@ -536,6 +538,21 @@ void _dynorb_threeBodyRestrictFun(const real t, const real *yy, const void *para
     ff[1] = yy[3];
     ff[2] = _2W * vy + _W2 * x - (p->mu1 * (x - p->x1) / _r1_3) - (p->mu2 * (x - p->x2) / _r2_3);
     ff[3] = -1.0 * _2W * vx + _W2 * y - ((p->mu1 / _r1_3) + (p->mu2 / _r2_3)) * y;
+}
+
+real _dynorb_rkeplerH(real e, real M_hyperbola, real tol)
+{
+    // Initial estimate (rough):
+    real F = M_hyperbola;
+    real ratio = 1;
+    while (fabs(ratio) > tol)
+    {
+        // Update ratio:
+        ratio = (e * sinh(F) - F - M_hyperbola) / (e * cosh(F) - 1);
+        // Update F:
+        F -= ratio;
+    }
+    return F;
 }
 
 real _dynorb_rkeplerE(real e, real M_ellipse, real tol)

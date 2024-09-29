@@ -10,10 +10,10 @@
 int main(void)
 {
     /* DATA: */
-    real rp = 9600.0;               // Perigee Radius [km]
-    real ra = 21000.0;              // Apogee Radius [km]
-    real th = _dynorb_deg2rad(120); // True Anomaly
-    real mu_E = (real)_dynorb_MU_E; // Earth grav. parameter [km^3 /s^2]
+    real rp = 9600.0;                 // Perigee Radius [km]
+    real ra = 21000.0;                // Apogee Radius [km]
+    real th = _dynorb_deg2rad(120.0); // True Anomaly [rad]
+    real mu_E = (real)_dynorb_MU_E;   // Earth grav. parameter [km^3 /s^2]
 
     /* EXERCISE 3.1: */
     real e = (ra - rp) / (ra + rp);                                                // Eccentricity [-]
