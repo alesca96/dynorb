@@ -27,7 +27,7 @@ int main(void)
     // Print Info:
     printf("\n");
     printf("------------------------------------------------------------\n");
-    printf("Example 3.2: part (a)\n");
+    printf("Example 3.5: part (a)\n");
     printf("-----------------------\n\n");
     printf("True Anomaly th = %g [deg]\n", _dynorb_rad2deg(th));
     printf("Angular Momentum h = %gm [km^2/s]\n", h);
@@ -53,7 +53,7 @@ int main(void)
     // Print Info
     printf("\n");
     printf("------------------------------------------------------------\n");
-    printf("Example 3.2: part (b)\n");
+    printf("Example 3.5: part (b)\n");
     printf("-----------------------\n\n");
     printf("New Time since Perigee tp = %g [s]\n", tp_);
     printf("Mean Anomaly Mh= %g [rad]\n", (Mh));
@@ -62,8 +62,7 @@ int main(void)
     printf("Radius at th = %g [deg] r(th) = %g [km]\n", _dynorb_rad2deg(th_), r_th_);
     printf("Speed at th = %g [deg] v(th) = %g [km/s]\n", _dynorb_rad2deg(th_), v_th_);
     printf("Hyperbolic Ecces Speed at th_inf = %g [deg] v(th) = %g [km/s]\n", _dynorb_rad2deg(th_inf), v_inf);
-
-    // printf("Radius at th = %g [deg] r(th) = %g [km]\n", _dynorb_rad2deg(th), r_th);
-
     printf("------------------------------------------------------------\n");
+
+    return 0;
 }

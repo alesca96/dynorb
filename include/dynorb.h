@@ -188,8 +188,10 @@ void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *so
 /* ====================================================================================================
  * DYNORB CORE FUNCTIONS:
  * ==================================================================================================== */
-
-real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, real tol);
+real _dynorb_rkeplerUniversal(const real mu, const real Dt, const real r0, const real vr0, const real alpha, const real tol, const int max_iter);
+real _dynorb_rstumpffS(const real z);
+real _dynorb_rstumpffC(const real z);
+real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, const real tol);
 void _dynorb_rrk1(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 void _dynorb_rrk2(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
 void _dynorb_rrk3(_dynorb_odeSys *sys, _dynorb_solverConf *solver_configuration);
@@ -544,7 +546,7 @@ real _dynorb_rkeplerH(real e, real M_hyperbola, real tol)
 {
     // Initial estimate (rough):
     real F = M_hyperbola;
-    real ratio = 1;
+    real ratio = 1.0;
     while (fabs(ratio) > tol)
     {
         // Update ratio:
@@ -567,7 +569,7 @@ real _dynorb_rkeplerE(real e, real M_ellipse, real tol)
     {
         E = M_ellipse - 0.5 * e;
     }
-    real ratio = 1;
+    real ratio = 1.0;
     while (fabs(ratio) > tol)
     {
         // Update ratio:
@@ -699,8 +701,82 @@ void _dynorb_configure_static(_dynorb_odeSys *ode_system, _dynorb_solverConf *so
 /* ====================================================================================================
  * DYNORB CORE FUNCTIONS:
  * ==================================================================================================== */
+real _dynorb_rkeplerUniversal(const real mu, const real Dt, const real r0, const real vr0, const real alpha, const real tol, const int max_iter)
+{
+    // Startig value for Universal Variable:
+    real sqrt_mu = sqrt(mu);
+    real chi = sqrt_mu * fabs(alpha) * Dt;
+    // Initialize ratio and number of iterations:
+    real ratio = 1.0;
+    int n_iter = 0;
+    // printf("\n_dynorb_rkeplerUniversal: Iteration [%d] | ratio = %g | Chi = %g\n", n_iter, ratio, chi);
 
-real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, real tol)
+    while (fabs(ratio) > tol && n_iter < max_iter)
+    {
+        // Temporary variables:
+        real A = (r0 * vr0) / sqrt_mu;
+        real B = 1.0 - (alpha * r0);
+        real chi2 = chi * chi;
+        real chi3 = pow(chi, 3.0);
+        real z = alpha * chi2;
+        real S = _dynorb_rstumpffS(z);
+        real C = _dynorb_rstumpffC(z);
+        // Update ratio
+        ratio = ((A * chi2 * C) + (B * chi3 * S) + (r0 * chi) - (sqrt_mu * Dt)) /
+                ((A * chi * (1 - alpha * chi2 * S)) + (B * chi2 * C) + r0);
+        // Update Universal Variable:
+        chi -= ratio;
+        // Update number of iter:
+        ++n_iter;
+        // printf("_dynorb_rkeplerUniversal: Iteration [%d] | ratio = %g | Chi = %g\n", n_iter, ratio, chi);
+    }
+    if (n_iter > max_iter)
+    {
+        printf("\n");
+        printf("_dynorb_rkeplerUniversal: Number of iterations (n_iter = %d) reached limit: %d\n", n_iter, max_iter);
+    }
+    return chi;
+}
+
+real _dynorb_rstumpffS(const real z)
+{
+    real S;
+    if (z > 0)
+    {
+        real sqrt_z = sqrt(z);
+        S = (sqrt_z - sin(sqrt_z)) / pow(sqrt_z, 3.0);
+    }
+    else if (z < 0)
+    {
+        real sqrt_z = sqrt(-z);
+        S = (sinh(sqrt_z) - sqrt_z) / pow(sqrt_z, 3.0);
+    }
+    else
+    {
+        S = 1.0 / 6.0;
+    }
+    return S;
+}
+
+real _dynorb_rstumpffC(const real z)
+{
+    real C;
+    if (z > 0)
+    {
+        C = (1 - cos(sqrt(z))) / z;
+    }
+    else if (z < 0)
+    {
+        C = (cosh(sqrt(-z)) - 1) / (-z);
+    }
+    else
+    {
+        C = 0.5;
+    }
+    return C;
+}
+
+real _dynorb_bisect(_dynorb_nonLinScalFun function, void *funParams, real a, real b, const real tol)
 { // Implementation of Bisection Method
     // Midpoit
     real c = 0;

@@ -53,4 +53,6 @@ int main(void)
     printf("\n L1 : x = % 10g km (f(x2) = % g)", L[1] * r12, LagrangeEarthMoon(L[1], &p));
     printf("\n L2 : x = % 10g km (f(x1) = % g)", L[2] * r12, LagrangeEarthMoon(L[2], &p));
     printf("\n=================================================\n");
+
+    return 0;
 }

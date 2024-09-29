@@ -57,4 +57,6 @@ int main(void)
     printf("True Anomaly th = %g [rad]\n", (th));
     printf("True Anomaly th = %g [deg]\n", _dynorb_rad2deg(th));
     printf("------------------------------------------------------------\n");
+
+    return 0;
 }
